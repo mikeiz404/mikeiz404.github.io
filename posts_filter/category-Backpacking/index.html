@@ -1,0 +1,337 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+  <title>Posts — Mike Wilson</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="/assets/main.css"/>
+  <link rel="alternate" type="application/rss+xml" title="Mike Wilson" href="/feed.xml"/>
+
+  <!-- Global Site Tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-107378017-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments)};
+    gtag('js', new Date());
+
+    gtag('config', 'UA-107378017-1');
+  </script>
+  <script async="" src="http://cdn.date-fns.org/v1.9.0/date_fns.min.js"></script>
+  <script src="https://use.fontawesome.com/46005f4479.js"></script>
+  <script async="" src="/assets/js/post.js "></script>
+  <script>
+    document.addEventListener('readystatechange', (event) =>
+    {
+      if( document.readyState === 'complete' )
+      {
+        let posts = document.querySelectorAll('article');
+        Array.prototype.map.call(posts, post => initPost(post));
+      }
+    });
+  </script>
+
+</head>
+
+
+  <body class="">
+
+    <div class="page-header-wrapper">
+  <header id="header">
+    <div class="content">
+
+      <a class="site-title">
+        <span class="image"></span>
+        <span class="name">Mike Wilson</span>
+      </a>
+
+      <navigation class="primary-links">
+        
+        <a class="link mind" href="/posts_filter/domain-Mind/">Mind</a>
+        
+        <a class="link body" href="/posts_filter/domain-Body/">Body</a>
+        
+        <a class="link soul" href="/posts_filter/domain-Soul/">Soul</a>
+        
+      </navigation>
+
+    </div>
+
+    <div class="shadow-divider-bottom"></div>
+  </header>
+</div>
+
+
+    <div class="page-content-wrapper">
+      <main class="page-content" aria-label="Content">
+        
+
+  <style>
+    /* TODO: use asset pipeline and move into generated sass file */
+
+    #domain-all:checked ~ .filters-container .filters label[for=domain-all],
+#domain-Mind:checked ~ .filters-container .filters label[for=domain-Mind],
+#domain-Body:checked ~ .filters-container .filters label[for=domain-Body],
+#domain-Soul:checked ~ .filters-container .filters label[for=domain-Soul],
+#category-all:checked ~ .filters-container .filters label[for=category-all],
+#category-Backpacking:checked ~ .filters-container .filters label[for=category-Backpacking],
+#category-Projects:checked ~ .filters-container .filters label[for=category-Projects],
+#tag-all:checked ~ .filters-container .filters label[for=tag-all],
+#tag-Notes:checked ~ .filters-container .filters label[for=tag-Notes],
+#tag-Project--Ad-Block:checked ~ .filters-container .filters label[for=tag-Project--Ad-Block]
+    {
+      background: #fcfcfc;
+      border-right-color: #ccc;
+      border-bottom-color: #ccc;
+      color: #aaa;
+    }
+
+    #domain-all:checked ~ #category-all:checked ~ #tag-all:checked ~ .results .result,
+#domain-all:checked ~ #category-all:checked ~ #tag-Notes:checked ~ .results .result.tag-Notes,
+#domain-all:checked ~ #category-all:checked ~ #tag-Project--Ad-Block:checked ~ .results .result.tag-Project--Ad-Block,
+#domain-all:checked ~ #category-Backpacking:checked ~ #tag-all:checked ~ .results .result.category-Backpacking,
+#domain-all:checked ~ #category-Backpacking:checked ~ #tag-Notes:checked ~ .results .result.category-Backpacking.tag-Notes,
+#domain-all:checked ~ #category-Backpacking:checked ~ #tag-Project--Ad-Block:checked ~ .results .result.category-Backpacking.tag-Project--Ad-Block,
+#domain-all:checked ~ #category-Projects:checked ~ #tag-all:checked ~ .results .result.category-Projects,
+#domain-all:checked ~ #category-Projects:checked ~ #tag-Notes:checked ~ .results .result.category-Projects.tag-Notes,
+#domain-all:checked ~ #category-Projects:checked ~ #tag-Project--Ad-Block:checked ~ .results .result.category-Projects.tag-Project--Ad-Block,
+#domain-Mind:checked ~ #category-all:checked ~ #tag-all:checked ~ .results .result.domain-Mind,
+#domain-Mind:checked ~ #category-all:checked ~ #tag-Notes:checked ~ .results .result.domain-Mind.tag-Notes,
+#domain-Mind:checked ~ #category-all:checked ~ #tag-Project--Ad-Block:checked ~ .results .result.domain-Mind.tag-Project--Ad-Block,
+#domain-Mind:checked ~ #category-Backpacking:checked ~ #tag-all:checked ~ .results .result.domain-Mind.category-Backpacking,
+#domain-Mind:checked ~ #category-Backpacking:checked ~ #tag-Notes:checked ~ .results .result.domain-Mind.category-Backpacking.tag-Notes,
+#domain-Mind:checked ~ #category-Backpacking:checked ~ #tag-Project--Ad-Block:checked ~ .results .result.domain-Mind.category-Backpacking.tag-Project--Ad-Block,
+#domain-Mind:checked ~ #category-Projects:checked ~ #tag-all:checked ~ .results .result.domain-Mind.category-Projects,
+#domain-Mind:checked ~ #category-Projects:checked ~ #tag-Notes:checked ~ .results .result.domain-Mind.category-Projects.tag-Notes,
+#domain-Mind:checked ~ #category-Projects:checked ~ #tag-Project--Ad-Block:checked ~ .results .result.domain-Mind.category-Projects.tag-Project--Ad-Block,
+#domain-Body:checked ~ #category-all:checked ~ #tag-all:checked ~ .results .result.domain-Body,
+#domain-Body:checked ~ #category-all:checked ~ #tag-Notes:checked ~ .results .result.domain-Body.tag-Notes,
+#domain-Body:checked ~ #category-all:checked ~ #tag-Project--Ad-Block:checked ~ .results .result.domain-Body.tag-Project--Ad-Block,
+#domain-Body:checked ~ #category-Backpacking:checked ~ #tag-all:checked ~ .results .result.domain-Body.category-Backpacking,
+#domain-Body:checked ~ #category-Backpacking:checked ~ #tag-Notes:checked ~ .results .result.domain-Body.category-Backpacking.tag-Notes,
+#domain-Body:checked ~ #category-Backpacking:checked ~ #tag-Project--Ad-Block:checked ~ .results .result.domain-Body.category-Backpacking.tag-Project--Ad-Block,
+#domain-Body:checked ~ #category-Projects:checked ~ #tag-all:checked ~ .results .result.domain-Body.category-Projects,
+#domain-Body:checked ~ #category-Projects:checked ~ #tag-Notes:checked ~ .results .result.domain-Body.category-Projects.tag-Notes,
+#domain-Body:checked ~ #category-Projects:checked ~ #tag-Project--Ad-Block:checked ~ .results .result.domain-Body.category-Projects.tag-Project--Ad-Block,
+#domain-Soul:checked ~ #category-all:checked ~ #tag-all:checked ~ .results .result.domain-Soul,
+#domain-Soul:checked ~ #category-all:checked ~ #tag-Notes:checked ~ .results .result.domain-Soul.tag-Notes,
+#domain-Soul:checked ~ #category-all:checked ~ #tag-Project--Ad-Block:checked ~ .results .result.domain-Soul.tag-Project--Ad-Block,
+#domain-Soul:checked ~ #category-Backpacking:checked ~ #tag-all:checked ~ .results .result.domain-Soul.category-Backpacking,
+#domain-Soul:checked ~ #category-Backpacking:checked ~ #tag-Notes:checked ~ .results .result.domain-Soul.category-Backpacking.tag-Notes,
+#domain-Soul:checked ~ #category-Backpacking:checked ~ #tag-Project--Ad-Block:checked ~ .results .result.domain-Soul.category-Backpacking.tag-Project--Ad-Block,
+#domain-Soul:checked ~ #category-Projects:checked ~ #tag-all:checked ~ .results .result.domain-Soul.category-Projects,
+#domain-Soul:checked ~ #category-Projects:checked ~ #tag-Notes:checked ~ .results .result.domain-Soul.category-Projects.tag-Notes,
+#domain-Soul:checked ~ #category-Projects:checked ~ #tag-Project--Ad-Block:checked ~ .results .result.domain-Soul.category-Projects.tag-Project--Ad-Block
+    {
+      display: block;
+    }
+
+    /* domain labels */
+    #domain-Mind:checked ~ .filters-container .filters label[for=domain-Mind]
+    {
+      color: var(--domain-mind-color1);
+    }
+
+    #domain-Body:checked ~ .filters-container .filters label[for=domain-Body]
+    {
+      color: var(--domain-body-color1);
+    }
+
+    #domain-Soul:checked ~ .filters-container .filters label[for=domain-Soul]
+    {
+      color: var(--domain-soul-color1);
+    }
+
+    /* TODO: pregenerate selectors for empty results and show empty results message */
+  </style>
+  <div class="posts-filter">
+    <input type="checkbox" id="filters-show"/>
+
+    
+      
+      <input type="radio" name="domains" id="domain-all" checked=''/>
+    
+      
+      <input type="radio" name="domains" id="domain-Mind" />
+    
+      
+      <input type="radio" name="domains" id="domain-Body" />
+    
+      
+      <input type="radio" name="domains" id="domain-Soul" />
+    
+
+    
+      
+      <input type="radio" name="categories" id="category-all" />
+    
+      
+      <input type="radio" name="categories" id="category-Backpacking" checked=''/>
+    
+      
+      <input type="radio" name="categories" id="category-Projects" />
+    
+
+    
+      
+      <input type="radio" name="tags" id="tag-all" checked=''/>
+    
+      
+      <input type="radio" name="tags" id="tag-Notes" />
+    
+      
+      <input type="radio" name="tags" id="tag-Project--Ad-Block" />
+    
+
+    <div class="filters-container">
+      <label for="filters-show">
+        <i class="fa fa-filter" aria-hidden="true"></i> Filters
+      </label>
+
+      <div class="filters">
+        <div class="domains filter">
+          <div class="title">Domains</div>
+          <div class="attributes">
+            
+              
+                <label for="domain-all">(Any)</label>
+              
+            
+              
+                <label for="domain-Mind">Mind</label>
+              
+            
+              
+                <label for="domain-Body">Body</label>
+              
+            
+              
+                <label for="domain-Soul">Soul</label>
+              
+            
+          </div>
+        </div>
+
+        <div class="categories filter">
+          <div class="title">Categories</div>
+          <div class="attributes">
+            
+              
+                <label for="category-all">(Any)</label>
+              
+            
+              
+                <label for="category-Backpacking">Backpacking</label>
+              
+            
+              
+                <label for="category-Projects">Projects</label>
+              
+            
+          </div>
+        </div>
+
+        <div class="tags filter">
+          <div class="title">Tags</div>
+          <div class="attributes">
+            
+              
+                <label for="tag-all">(Any)</label>
+              
+            
+              
+                <label for="tag-Notes">Notes</label>
+              
+            
+              
+                <label for="tag-Project--Ad-Block">Project: Ad Block</label>
+              
+            
+          </div>
+        </div>
+
+        <div class="filters-footer shadow-divider-bottom"></div>
+      </div>
+    </div>
+
+    <div class="results">
+      
+          <span class="result domain-Mind category-Projects tag-Project--Ad-Block">
+            <a href="/2017/11/03/Project-AdBlock-Mirage" class="article-stub domain-mind">
+              <div class="title">Project: AdBlock Mirage</div>
+              <div class="subtitle">Looking into a generic method for preventing the detection of element hiding, a method of ad blocking</div>
+              <div class="published">Nov 3, 2017</div>
+            </a>
+          </span>
+      
+          <span class="result domain-Mind">
+            <a href="/2017/10/22/Interesting-Readings" class="article-stub domain-mind">
+              <div class="title">Interesting Readings</div>
+              <div class="subtitle">A collection of thought engaging papers, articles, and the sort on various topics</div>
+              <div class="published">Oct 22, 2017</div>
+            </a>
+          </span>
+      
+          <span class="result domain-Body category-Backpacking tag-Notes">
+            <a href="/2017/06/07/Backpacking-Notes" class="article-stub domain-body">
+              <div class="title">Backpacking Notes</div>
+              <div class="subtitle">A collection of notes I have found helpful for planning and executing backpacking trips</div>
+              <div class="published">Jun 7, 2017</div>
+            </a>
+          </span>
+      
+          <span class="result domain-Soul">
+            <a href="/2017/05/30/Lower-Antelope-Canyon" class="article-stub domain-soul">
+              <div class="title">A Stroll through Lower Antelope Canyon</div>
+              <div class="subtitle">A stroll through the lower section of the highly photogenic Antelope Canyon in Arizona during the Spring of 2017</div>
+              <div class="published">May 30, 2017</div>
+            </a>
+          </span>
+      
+          <span class="result domain-Soul">
+            <a href="/2017/05/30/Horseshoe-Bend" class="article-stub domain-soul">
+              <div class="title">A Trip to Horseshoe Bend</div>
+              <div class="subtitle">A trip to Horseshoe Bend in Arizona a little before sunset during the Spring of 2017</div>
+              <div class="published">May 30, 2017</div>
+            </a>
+          </span>
+      
+          <span class="result domain-Soul">
+            <a href="/2016/06/20/Crater-Lake" class="article-stub domain-soul">
+              <div class="title">A Windless Day at Crater Lake</div>
+              <div class="subtitle">In Oregon a windless day at Crater Lake allows for a mirror like surface to form in the caldera during the Summer of 2016</div>
+              <div class="published">Jun 20, 2016</div>
+            </a>
+          </span>
+      
+          <span class="result domain-Soul category-Backpacking">
+            <a href="/2016/06/15/PCT-Bridge-of-the-Gods" class="article-stub domain-soul">
+              <div class="title">Backpacking Part of the Pacific Crest Trail: Bridge of the Gods,  North</div>
+              <div class="subtitle">Photos from a five day solo backpacking trip from Bridge of the Gods in Oregon, going North into Washington, and back during the Summer of 2016</div>
+              <div class="published">Jun 15, 2016</div>
+            </a>
+          </span>
+      
+          <span class="result domain-Soul">
+            <a href="/2016/03/15/Baylands" class="article-stub domain-soul">
+              <div class="title">The Baylands</div>
+              <div class="subtitle">Photos from multiple wanderings into the Baylands Nature Preserve in Palo Alto, CA</div>
+              <div class="published">Mar 15, 2016</div>
+            </a>
+          </span>
+      
+      <div class="results-footer">And Then There Were None</div>
+    </div>
+  </div>
+
+      </main>
+    </div>
+
+    <div class="page-footer"></div>
+  </body>
+
+</html>

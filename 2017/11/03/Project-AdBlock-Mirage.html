@@ -1,0 +1,343 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+  <title>Project: AdBlock Mirage — Mike Wilson</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="/assets/main.css"/>
+  <link rel="alternate" type="application/rss+xml" title="Mike Wilson" href="/feed.xml"/>
+
+  <!-- Global Site Tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-107378017-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments)};
+    gtag('js', new Date());
+
+    gtag('config', 'UA-107378017-1');
+  </script>
+  <script async="" src="http://cdn.date-fns.org/v1.9.0/date_fns.min.js"></script>
+  <script src="https://use.fontawesome.com/46005f4479.js"></script>
+  <script async="" src="/assets/js/post.js "></script>
+  <script>
+    document.addEventListener('readystatechange', (event) =>
+    {
+      if( document.readyState === 'complete' )
+      {
+        let posts = document.querySelectorAll('article');
+        Array.prototype.map.call(posts, post => initPost(post));
+      }
+    });
+  </script>
+
+</head>
+
+
+  <body class="domain-mind">
+
+    <div class="page-header-wrapper">
+  <header id="header">
+    <div class="content">
+
+      <a class="site-title">
+        <span class="image"></span>
+        <span class="name">Mike Wilson</span>
+      </a>
+
+      <navigation class="primary-links">
+        
+        <a class="link mind" href="/posts_filter/domain-Mind/">Mind</a>
+        
+        <a class="link body" href="/posts_filter/domain-Body/">Body</a>
+        
+        <a class="link soul" href="/posts_filter/domain-Soul/">Soul</a>
+        
+      </navigation>
+
+    </div>
+
+    <div class="shadow-divider-bottom"></div>
+  </header>
+</div>
+
+
+    <div class="page-content-wrapper">
+      <main class="page-content" aria-label="Content">
+        
+
+
+
+<article class="primary" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <!-- header -->
+  <section class="article-header">
+    <h1 class="title">Project: AdBlock Mirage</h1>
+    <p class="subtitle">Looking into a generic method for preventing the detection of element hiding, a method of ad blocking</p>
+
+    <div class="info-container">
+      
+      <span class="info reading-time"><b> 9 minutes</b> read</span>
+      
+      
+      <span class="info created" data-datetime="2017-11-03 00:00:00 -0700" title="Nov 3, 2017">
+        Nov 3, 2017
+      </span>
+    </div>
+
+  </section>
+
+
+  <!-- content -->
+  <section class="content">
+    <p><img src="/resources/2017-11-03-Project-AdBlock-Mirage/mirage-demo.gif" alt='Adblock Plus + "Mirage" Demo'></p>
+
+<h1 id="motivation">Motivation</h1>
+<p><em>You may want to skip this section if you are already familiar with ad blocking techniques.</em></p>
+
+<p>Ad blocking is the process of disabling or removing ad content from a page, often through the use of a browser plugin.
+With the extensive use of ad blocking and its measurable impact, many publishers have decided to employ counter measures which restrict access to site content when this type of activity is detected.
+If your intent is to browse the internet without third party messaging, then ad blocking can pose some challenges these days.
+<img src="/resources/2017-11-03-Project-AdBlock-Mirage/disable-adblock-messaging.png" alt="Disable AdBlock Messaging"></p>
+
+<p>Current ad blocking solutions employ element removal, resource blocking, and script rewriting.
+The problem with these techniques is that they can be detected rather well.</p>
+
+<p>Element removal is often done by modifying the element’s style (<a href="https://github.com/adblockplus/adblockpluschrome/blob/master/include.preload.js#L430" rel="nofollow" target="_blank">ex: “display: none”</a>).
+This can be detected by looking at an ad element’s computed style at random intervals and looking for attributes which are indicative of element hiding (<a href="https://github.com/sitexw/FuckAdBlock/blob/master/fuckadblock.js#L81" rel="nofollow" target="_blank">ex: “offsetParent”, “offsetHeight”, “offsetLeft”, “clientHeight”</a>).
+Script blocking can be detected by including a unique indicator in the content and, after all content has loaded, checking for that indicator (ex: <a href="https://github.com/sitexw/FuckAdBlock/blob/master/test.html#L235" rel="nofollow" target="_blank">content hash check</a>).
+Now one can imagine how these detection techniques could be usurped by either blocking the anti ad block messaging (ex: <a href="https://adblockplus.org/en/subscriptions#type_anti-adblock" rel="nofollow" target="_blank">Adblock Warning Removal List</a>) or even modifying the detection scripts themselves (ex: <a href="https://github.com/reek/anti-adblock-killer/blob/master/anti-adblock-killer.user.js#L2090" rel="nofollow" target="_blank">anti-adblock-killer</a>).
+However this becomes a game of obfuscation based cat and mouse where ad block detection prevention requires increasingly more complexity and processing time.</p>
+
+<p>Is there a better way? Maybe.</p>
+
+<h1 id="overview">Overview</h1>
+<p>“Mirage” is a first attempt at looking into preventing ad block detection while still staying performant.</p>
+
+<p>If we can prevent the detection of element hiding by lying to anti ad block element probing scripts in an undetectable way, then we stand a chance.</p>
+
+<p>Since JavaScript is a prototypical language and the <code class="highlighter-rouge">__proto__</code> chain of key DOM objects can be modified, we can intercept all element style inspection functions, disable the ad block styles before the function call, and re-enable them after.
+This happens fast enough that the style changes are not visually seen or repainted.
+However there is a non-trivial overhead to this forced relayout.
+Caching of ad element styles allows this approach to be more performant.
+We can also chose to hide elements by using <code class="highlighter-rouge">visibility: hidden</code> to not take the element out of the document flow.
+Visually this does not look as nice but it should not be necessary now to compute a relayout.</p>
+
+<h1 id="approach">Approach</h1>
+<h2 id="replacing-functions">Replacing Functions</h2>
+<p>The first step to this facade is to replace a few key functions.
+Specifically we will be looking at wrapping calls to:</p>
+<ul>
+  <li>
+<code class="highlighter-rouge">HTMLElement</code>
+    <ul>
+      <li><code class="highlighter-rouge">.offsetTop</code></li>
+      <li><code class="highlighter-rouge">.offsetLeft</code></li>
+      <li><code class="highlighter-rouge">.offsetWidth</code></li>
+      <li><code class="highlighter-rouge">.offsetHeight</code></li>
+      <li><code class="highlighter-rouge">.offsetParent</code></li>
+    </ul>
+  </li>
+  <li>
+<code class="highlighter-rouge">Element</code>
+    <ul>
+      <li><code class="highlighter-rouge">.clientWidth</code></li>
+      <li><code class="highlighter-rouge">.clientHeight</code></li>
+    </ul>
+  </li>
+  <li>
+<code class="highlighter-rouge">CSSStyleDeclaration</code>
+    <ul>
+      <li><code class="highlighter-rouge">.getPropertyValue()</code></li>
+    </ul>
+  </li>
+</ul>
+
+<p>Now to intercept the function call we could add new functions to the ad element’s prototype.
+As so…</p>
+<noscript><pre>400: Invalid request
+</pre></noscript>
+<script src="https://gist.github.com/9bd602d52855177f69ebabd238d12c85.js"> </script>
+
+<p><img src="/resources/2017-11-03-Project-AdBlock-Mirage/fn-replaced-1.svg" alt="FN Replaced 1"></p>
+
+<p>However this sort of interception can be detected by walking the prototype chain and looking for targeted function name conflicts or observing that the targeted function is defined on an unexpected object.</p>
+
+<p>To get around this we will want to replace the function on the object in which it is defined.
+We can do this by walking the prototype chain ourselves until we find the function definition.
+As so…</p>
+<noscript><pre>400: Invalid request
+</pre></noscript>
+<script src="https://gist.github.com/240eb87495a3753cec70ebc673ee4bc5.js"> </script>
+
+<p><img src="/resources/2017-11-03-Project-AdBlock-Mirage/fn-replaced-2.svg" alt="FN Replaced 2"></p>
+
+<p>This also prevents the replaced function from ever being called again in an unexpected way if we guard access to its original reference.</p>
+
+<p>Now you might be wondering if the new function itself is detectable simply by virtue of being different than the original function.
+It is.
+See <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/toString" rel="nofollow" target="_blank"><code class="highlighter-rouge">Function.prototype.toString()</code></a> as an example.
+However we can override the <code class="highlighter-rouge">toString()</code> method and all other methods which leak this information if that becomes necessary.</p>
+
+<p>Finally many of the object attributes we are interested in have defined <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/get" rel="nofollow" target="_blank">getters</a> and <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/set" rel="nofollow" target="_blank">setters</a>, and these too can be replaced in a similar manner with the help of <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/getOwnPropertyDescriptor" rel="nofollow" target="_blank"><code class="highlighter-rouge">getOwnPropertyDescriptor()</code></a> and <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty" rel="nofollow" target="_blank"><code class="highlighter-rouge">defineProperty()</code></a>.</p>
+
+<h2 id="being-first">Being First</h2>
+<p>Now all this work of setting up a facade for the ad detection scripts will be for naught if we cannot be guaranteed to run before them.
+This is actually pretty simple to accomplish.
+When writing a chrome extension we can set the <code class="highlighter-rouge">run_at</code> attribute in the manifest for our injected script to <code class="highlighter-rouge">document_start</code>. <a href="https://developer.chrome.com/extensions/content_scripts#run_at" rel="nofollow" target="_blank">“In the case of “document_start”, the files are injected after any files from css, but before any other DOM is constructed or any other script is run.”</a>.
+As so…</p>
+<noscript><pre>400: Invalid request
+</pre></noscript>
+<script src="https://gist.github.com/af962d91f157c97bb82e72ec80de0223.js"> </script>
+
+<h2 id="creating-a-mirage">Creating a “Mirage”</h2>
+<p>Now that all the prep work is out of the way, we are ready to start looking at the intercepting function.
+This function is actually quite simple if we ignore performance for now.
+We will simply disable the ad blocking styles rules, call the original function, enable the ad blocking style rules, and return the result.
+As such</p>
+<noscript><pre>400: Invalid request
+</pre></noscript>
+<script src="https://gist.github.com/6f4c48bd149cfa807ea1785c319fad83.js"> </script>
+
+<h1 id="performance">Performance</h1>
+<p>You should now have a pretty good conceptual idea of how we are deceiving ad block detection.
+However a lot more work is required to make this performant.
+This is necessary since ad detection scripts will run checks with many iterations shortly after the page loads, when new ads in frames are loaded, and <em>most importantly</em> during <code class="highlighter-rouge">onscroll</code> events.</p>
+
+<p>To keep things snappy the element styles are <a href="https://github.com/mikeiz404/adblockpluschrome-mirage/blob/61463caaf1f685569feb442f9414c960380e8446/inject.preload.js#L404" rel="nofollow" target="_blank">cached and recomputed in batch</a>.
+The cache is invalidated when a DOM element is added, removed, or a style property is modified since these events can alter what an element’s computed style might be.</p>
+
+<p>As another means of improving performance, the ad block style has been modified to trigger an animation event (<a href="https://stackoverflow.com/questions/6997826/alternative-to-domnodeinserted" rel="nofollow" target="_blank">more details</a>). This is much faster than calling <code class="highlighter-rouge">querySelectorAll</code> on DOM mutations. However this approach has its own drawbacks due to it being asynchronous.</p>
+
+<p>Using this animation event technique also means <code class="highlighter-rouge">display: none</code> cannot be used to hide the ad elements since an animation event will not be triggered.
+Instead <code class="highlighter-rouge">visibility: hidden</code> and <code class="highlighter-rouge">position: absolute</code> are used for element hiding.</p>
+
+<h1 id="limitations">Limitations</h1>
+<p>There are a few.
+Since ad element detection is being done through an asynchronous browser event, <a href="https://developer.mozilla.org/en-US/docs/Web/Events/animationstart" rel="nofollow" target="_blank"><code class="highlighter-rouge">animationstart</code></a>, an ad element is not always detected before an ad detection function is run and, due to the asynchronous nature of events, this cannot be prevented.
+An element can also have no events fired for it if the element is added and removed from the DOM too quickly.
+This no-event-fired condition becomes much more likely when an ad element is added, inspected, and removed in rapid succession.</p>
+
+<p>Alternative synchronous approaches such as determining if an element is an ad element during inspection causes a noticeable performance impact on complex pages, even with caching.
+Worse still memory usage drastically increases due to the inclusion of the ad blocking selectors on each page or frame needed for calls to <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/matches" rel="nofollow" target="_blank"><code class="highlighter-rouge">Element.matches()</code></a>.
+It does however work reliably.</p>
+
+<h1 id="where-do-we-go-from-here">Where Do We Go From Here?</h1>
+<p>“Mirage” has served as a good proof of concept and has given some insight into alternative solutions.</p>
+
+<h2 id="parallel-dom">Parallel DOM</h2>
+<p>Perhaps the most promising is the construction of a parallel DOM.
+We can clone the DOM on load into a <a href="https://developer.mozilla.org/en-US/docs/Web/Web_Components/Shadow_DOM" rel="nofollow" target="_blank"><code class="highlighter-rouge">Shadow DOM</code></a>, pass all style related function calls to the shadow DOM, and apply our ad blocking styles to the main DOM.
+This will require us to keep the main DOM and shadow DOM in sync but there will no longer be a need to recompute styles upon ad element inspection.</p>
+
+<p>There are some concerns about memory usage but my hunch is that the DOM, ignoring external resources, is pretty small, and resource references will be shared between the page and shadow DOM since they are apart of the same page.</p>
+
+<h2 id="computing-styles-ourselves">Computing Styles Ourselves</h2>
+<p>We could compute the style changes ourselves, instead of relying on the browser.
+If we only need to handle a subset of styles then this becomes some what reasonable.
+For example if an element blocking method such as <code class="highlighter-rouge">visibility: none</code> is used then element layout will not need to be recomputed.
+This means that only the styles which affect the <code class="highlighter-rouge">visibility</code> state of the ad elements need to be parsed and stored.
+And when an ad element is inspected only the stored <code class="highlighter-rouge">visibility</code> state needs to be returned.</p>
+
+<p>But this approach does seem complicated and does not allow collapsing of the ad space.</p>
+
+<h2 id="performant-and-reliable-ad-element-detection">Performant <em>and</em> Reliable Ad Element Detection</h2>
+<p>Finally one of the issues with using asynchronous DOM modification events was that the creation of ad elements could not always be handled in time.
+We can overcome this by either marking the ad element with a new ad block style (ex: <code class="highlighter-rouge">content: 'AD-ELEMENT'</code>) or having the equivalent of a whitelist and black list, and any unclassified elements would be treated as being blacklisted.</p>
+
+<p>However if we use the ‘Parallel DOM’ approach this will no longer be an issue since we can pass all element inspection calls directly to the shadow DOM with hopefully a negligible performance overhead.</p>
+
+<h1 id="closing">Closing</h1>
+<p>We have looked at a way to thwart ad block detection if some compromises, such as content loading, can be made.
+Then we touched on how it could be made more performant.
+Finally there are some limitations in this approach which effect performance and reliability but we do have some good options to look into for addressing these.</p>
+
+<p><a href="https://github.com/mikeiz404/adblockpluschrome-mirage" rel="nofollow" target="_blank"><i class="fa fa-github-square" aria-hidden="true"></i> GitHub Repo: AdBlock Plus + “Mirage”</a></p>
+
+  </section>
+
+
+  <!-- footer -->
+  <section class="article-footer">
+
+    <section class="tags">
+      
+      <a class="tag" href="/posts_filter/category-Projects/">Projects</a>
+      
+      
+      <a class="tag" href="/posts_filter/tag-Project--Ad-Block/">Project: Ad Block</a>
+      
+    </section>
+
+    <section class="action-bar">
+      <a href="#primary-article-comments">
+        <i class="fa fa-comments-o" aria-hidden="true"></i> Leave a Comment
+      </a>
+      <a href="/posts_filter/all/">
+        Read More Posts
+        <i class="fa fa-file-text" aria-hidden="true"></i>
+      </a>
+    </section>
+
+    <div class="shadow-divider-bottom"></div>
+
+    <!-- other articles -->
+    <div class="article-recomendations">
+      
+        <a href="/2017/10/22/Interesting-Readings" class="article-stub domain-mind">
+          <div class="title">Interesting Readings</div>
+          <div class="subtitle">A collection of thought engaging papers, articles, and the sort on various topics</div>
+          <div class="published">Oct 22, 2017</div>
+        </a>
+      
+        <a href="/2017/06/07/Backpacking-Notes" class="article-stub domain-body">
+          <div class="title">Backpacking Notes</div>
+          <div class="subtitle">A collection of notes I have found helpful for planning and executing backpacking trips</div>
+          <div class="published">Jun 7, 2017</div>
+        </a>
+      
+        <a href="/2017/05/30/Lower-Antelope-Canyon" class="article-stub domain-soul">
+          <div class="title">A Stroll through Lower Antelope Canyon</div>
+          <div class="subtitle">A stroll through the lower section of the highly photogenic Antelope Canyon in Arizona during the Spring of 2017</div>
+          <div class="published">May 30, 2017</div>
+        </a>
+      
+    </div>
+    <div class="shadow-divider-bottom"></div>
+
+    <!-- comments -->
+    <div id="primary-article-comments" class="article-comments" name="article-comments">
+      <div id="disqus_thread"></div>
+      <script>
+        var disqus_config = function ()
+        {
+          this.disqus_identifier = '/2017/11/03/Project-AdBlock-Mirage';
+          this.disqus_url = '/2017/11/03/Project-AdBlock-Mirage';
+        };
+        (function()
+        { // DON'T EDIT BELOW THIS LINE
+          var d = document, s = d.createElement('script');
+          s.src = 'https://amikewilson-blog.disqus.com/embed.js';
+          s.setAttribute('data-timestamp', +new Date());
+          (d.head || d.body).appendChild(s);
+        })();
+      </script>
+      <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    </div>
+
+  </section>
+
+  <div class="shadow-divider-bottom"></div>
+</aticle>
+
+      </main>
+    </div>
+
+    <div class="page-footer"></div>
+  </body>
+
+</html>

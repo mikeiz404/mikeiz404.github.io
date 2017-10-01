@@ -1,0 +1,508 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2017-11-09T19:31:27-08:00</updated><id>/</id><title type="html">Mike Wilson</title><entry><title type="html">Project: AdBlock Mirage</title><link href="/2017/11/03/Project-AdBlock-Mirage" rel="alternate" type="text/html" title="Project: AdBlock Mirage" /><published>2017-11-03T00:00:00-07:00</published><updated>2017-11-08T16:16:11-08:00</updated><id>/2017/11/03/Project-AdBlock-Mirage</id><content type="html" xml:base="/2017/11/03/Project-AdBlock-Mirage">&lt;p&gt;&lt;img src=&quot;/resources/2017-11-03-Project-AdBlock-Mirage/mirage-demo.gif&quot; alt=&quot;Adblock Plus + &amp;quot;Mirage&amp;quot; Demo&quot; /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;motivation&quot;&gt;Motivation&lt;/h1&gt;
+&lt;p&gt;&lt;em&gt;You may want to skip this section if you are already familiar with ad blocking techniques.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;Ad blocking is the process of disabling or removing ad content from a page, often through the use of a browser plugin.
+With the extensive use of ad blocking and its measurable impact, many publishers have decided to employ counter measures which restrict access to site content when this type of activity is detected.
+If your intent is to browse the internet without third party messaging, then ad blocking can pose some challenges these days.
+&lt;img src=&quot;/resources/2017-11-03-Project-AdBlock-Mirage/disable-adblock-messaging.png&quot; alt=&quot;Disable AdBlock Messaging&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Current ad blocking solutions employ element removal, resource blocking, and script rewriting.
+The problem with these techniques is that they can be detected rather well.&lt;/p&gt;
+
+&lt;p&gt;Element removal is often done by modifying the element’s style (&lt;a href=&quot;https://github.com/adblockplus/adblockpluschrome/blob/master/include.preload.js#L430&quot;&gt;ex: “display: none”&lt;/a&gt;).
+This can be detected by looking at an ad element’s computed style at random intervals and looking for attributes which are indicative of element hiding (&lt;a href=&quot;https://github.com/sitexw/FuckAdBlock/blob/master/fuckadblock.js#L81&quot;&gt;ex: “offsetParent”, “offsetHeight”, “offsetLeft”, “clientHeight”&lt;/a&gt;).
+Script blocking can be detected by including a unique indicator in the content and, after all content has loaded, checking for that indicator (ex: &lt;a href=&quot;https://github.com/sitexw/FuckAdBlock/blob/master/test.html#L235&quot;&gt;content hash check&lt;/a&gt;).
+Now one can imagine how these detection techniques could be usurped by either blocking the anti ad block messaging (ex: &lt;a href=&quot;https://adblockplus.org/en/subscriptions#type_anti-adblock&quot;&gt;Adblock Warning Removal List&lt;/a&gt;) or even modifying the detection scripts themselves (ex: &lt;a href=&quot;https://github.com/reek/anti-adblock-killer/blob/master/anti-adblock-killer.user.js#L2090&quot;&gt;anti-adblock-killer&lt;/a&gt;).
+However this becomes a game of obfuscation based cat and mouse where ad block detection prevention requires increasingly more complexity and processing time.&lt;/p&gt;
+
+&lt;p&gt;Is there a better way? Maybe.&lt;/p&gt;
+
+&lt;h1 id=&quot;overview&quot;&gt;Overview&lt;/h1&gt;
+&lt;p&gt;“Mirage” is a first attempt at looking into preventing ad block detection while still staying performant.&lt;/p&gt;
+
+&lt;p&gt;If we can prevent the detection of element hiding by lying to anti ad block element probing scripts in an undetectable way, then we stand a chance.&lt;/p&gt;
+
+&lt;p&gt;Since JavaScript is a prototypical language and the &lt;code class=&quot;highlighter-rouge&quot;&gt;__proto__&lt;/code&gt; chain of key DOM objects can be modified, we can intercept all element style inspection functions, disable the ad block styles before the function call, and re-enable them after.
+This happens fast enough that the style changes are not visually seen or repainted.
+However there is a non-trivial overhead to this forced relayout.
+Caching of ad element styles allows this approach to be more performant.
+We can also chose to hide elements by using &lt;code class=&quot;highlighter-rouge&quot;&gt;visibility: hidden&lt;/code&gt; to not take the element out of the document flow.
+Visually this does not look as nice but it should not be necessary now to compute a relayout.&lt;/p&gt;
+
+&lt;h1 id=&quot;approach&quot;&gt;Approach&lt;/h1&gt;
+&lt;h2 id=&quot;replacing-functions&quot;&gt;Replacing Functions&lt;/h2&gt;
+&lt;p&gt;The first step to this facade is to replace a few key functions.
+Specifically we will be looking at wrapping calls to:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;HTMLElement&lt;/code&gt;
+    &lt;ul&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;.offsetTop&lt;/code&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;.offsetLeft&lt;/code&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;.offsetWidth&lt;/code&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;.offsetHeight&lt;/code&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;.offsetParent&lt;/code&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;Element&lt;/code&gt;
+    &lt;ul&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;.clientWidth&lt;/code&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;.clientHeight&lt;/code&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;CSSStyleDeclaration&lt;/code&gt;
+    &lt;ul&gt;
+      &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;.getPropertyValue()&lt;/code&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Now to intercept the function call we could add new functions to the ad element’s prototype.
+As so…&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;400: Invalid request
+&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/9bd602d52855177f69ebabd238d12c85.js&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;img src=&quot;/resources/2017-11-03-Project-AdBlock-Mirage/fn-replaced-1.svg&quot; alt=&quot;FN Replaced 1&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;However this sort of interception can be detected by walking the prototype chain and looking for targeted function name conflicts or observing that the targeted function is defined on an unexpected object.&lt;/p&gt;
+
+&lt;p&gt;To get around this we will want to replace the function on the object in which it is defined.
+We can do this by walking the prototype chain ourselves until we find the function definition.
+As so…&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;400: Invalid request
+&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/240eb87495a3753cec70ebc673ee4bc5.js&quot;&gt; &lt;/script&gt;
+
+&lt;p&gt;&lt;img src=&quot;/resources/2017-11-03-Project-AdBlock-Mirage/fn-replaced-2.svg&quot; alt=&quot;FN Replaced 2&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;This also prevents the replaced function from ever being called again in an unexpected way if we guard access to its original reference.&lt;/p&gt;
+
+&lt;p&gt;Now you might be wondering if the new function itself is detectable simply by virtue of being different than the original function.
+It is.
+See &lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/toString&quot;&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;Function.prototype.toString()&lt;/code&gt;&lt;/a&gt; as an example.
+However we can override the &lt;code class=&quot;highlighter-rouge&quot;&gt;toString()&lt;/code&gt; method and all other methods which leak this information if that becomes necessary.&lt;/p&gt;
+
+&lt;p&gt;Finally many of the object attributes we are interested in have defined &lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/get&quot;&gt;getters&lt;/a&gt; and &lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/set&quot;&gt;setters&lt;/a&gt;, and these too can be replaced in a similar manner with the help of &lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/getOwnPropertyDescriptor&quot;&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;getOwnPropertyDescriptor()&lt;/code&gt;&lt;/a&gt; and &lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty&quot;&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;defineProperty()&lt;/code&gt;&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;being-first&quot;&gt;Being First&lt;/h2&gt;
+&lt;p&gt;Now all this work of setting up a facade for the ad detection scripts will be for naught if we cannot be guaranteed to run before them.
+This is actually pretty simple to accomplish.
+When writing a chrome extension we can set the &lt;code class=&quot;highlighter-rouge&quot;&gt;run_at&lt;/code&gt; attribute in the manifest for our injected script to &lt;code class=&quot;highlighter-rouge&quot;&gt;document_start&lt;/code&gt;. &lt;a href=&quot;https://developer.chrome.com/extensions/content_scripts#run_at&quot;&gt;“In the case of “document_start”, the files are injected after any files from css, but before any other DOM is constructed or any other script is run.”&lt;/a&gt;.
+As so…&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;400: Invalid request
+&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/af962d91f157c97bb82e72ec80de0223.js&quot;&gt; &lt;/script&gt;
+
+&lt;h2 id=&quot;creating-a-mirage&quot;&gt;Creating a “Mirage”&lt;/h2&gt;
+&lt;p&gt;Now that all the prep work is out of the way, we are ready to start looking at the intercepting function.
+This function is actually quite simple if we ignore performance for now.
+We will simply disable the ad blocking styles rules, call the original function, enable the ad blocking style rules, and return the result.
+As such&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;400: Invalid request
+&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/6f4c48bd149cfa807ea1785c319fad83.js&quot;&gt; &lt;/script&gt;
+
+&lt;h1 id=&quot;performance&quot;&gt;Performance&lt;/h1&gt;
+&lt;p&gt;You should now have a pretty good conceptual idea of how we are deceiving ad block detection.
+However a lot more work is required to make this performant.
+This is necessary since ad detection scripts will run checks with many iterations shortly after the page loads, when new ads in frames are loaded, and &lt;em&gt;most importantly&lt;/em&gt; during &lt;code class=&quot;highlighter-rouge&quot;&gt;onscroll&lt;/code&gt; events.&lt;/p&gt;
+
+&lt;p&gt;To keep things snappy the element styles are &lt;a href=&quot;https://github.com/mikeiz404/adblockpluschrome-mirage/blob/61463caaf1f685569feb442f9414c960380e8446/inject.preload.js#L404&quot;&gt;cached and recomputed in batch&lt;/a&gt;.
+The cache is invalidated when a DOM element is added, removed, or a style property is modified since these events can alter what an element’s computed style might be.&lt;/p&gt;
+
+&lt;p&gt;As another means of improving performance, the ad block style has been modified to trigger an animation event (&lt;a href=&quot;https://stackoverflow.com/questions/6997826/alternative-to-domnodeinserted&quot;&gt;more details&lt;/a&gt;). This is much faster than calling &lt;code class=&quot;highlighter-rouge&quot;&gt;querySelectorAll&lt;/code&gt; on DOM mutations. However this approach has its own drawbacks due to it being asynchronous.&lt;/p&gt;
+
+&lt;p&gt;Using this animation event technique also means &lt;code class=&quot;highlighter-rouge&quot;&gt;display: none&lt;/code&gt; cannot be used to hide the ad elements since an animation event will not be triggered.
+Instead &lt;code class=&quot;highlighter-rouge&quot;&gt;visibility: hidden&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;position: absolute&lt;/code&gt; are used for element hiding.&lt;/p&gt;
+
+&lt;h1 id=&quot;limitations&quot;&gt;Limitations&lt;/h1&gt;
+&lt;p&gt;There are a few.
+Since ad element detection is being done through an asynchronous browser event, &lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Web/Events/animationstart&quot;&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;animationstart&lt;/code&gt;&lt;/a&gt;, an ad element is not always detected before an ad detection function is run and, due to the asynchronous nature of events, this cannot be prevented.
+An element can also have no events fired for it if the element is added and removed from the DOM too quickly.
+This no-event-fired condition becomes much more likely when an ad element is added, inspected, and removed in rapid succession.&lt;/p&gt;
+
+&lt;p&gt;Alternative synchronous approaches such as determining if an element is an ad element during inspection causes a noticeable performance impact on complex pages, even with caching.
+Worse still memory usage drastically increases due to the inclusion of the ad blocking selectors on each page or frame needed for calls to &lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Web/API/Element/matches&quot;&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;Element.matches()&lt;/code&gt;&lt;/a&gt;.
+It does however work reliably.&lt;/p&gt;
+
+&lt;h1 id=&quot;where-do-we-go-from-here&quot;&gt;Where Do We Go From Here?&lt;/h1&gt;
+&lt;p&gt;“Mirage” has served as a good proof of concept and has given some insight into alternative solutions.&lt;/p&gt;
+
+&lt;h2 id=&quot;parallel-dom&quot;&gt;Parallel DOM&lt;/h2&gt;
+&lt;p&gt;Perhaps the most promising is the construction of a parallel DOM.
+We can clone the DOM on load into a &lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Web/Web_Components/Shadow_DOM&quot;&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;Shadow DOM&lt;/code&gt;&lt;/a&gt;, pass all style related function calls to the shadow DOM, and apply our ad blocking styles to the main DOM.
+This will require us to keep the main DOM and shadow DOM in sync but there will no longer be a need to recompute styles upon ad element inspection.&lt;/p&gt;
+
+&lt;p&gt;There are some concerns about memory usage but my hunch is that the DOM, ignoring external resources, is pretty small, and resource references will be shared between the page and shadow DOM since they are apart of the same page.&lt;/p&gt;
+
+&lt;h2 id=&quot;computing-styles-ourselves&quot;&gt;Computing Styles Ourselves&lt;/h2&gt;
+&lt;p&gt;We could compute the style changes ourselves, instead of relying on the browser.
+If we only need to handle a subset of styles then this becomes some what reasonable.
+For example if an element blocking method such as &lt;code class=&quot;highlighter-rouge&quot;&gt;visibility: none&lt;/code&gt; is used then element layout will not need to be recomputed.
+This means that only the styles which affect the &lt;code class=&quot;highlighter-rouge&quot;&gt;visibility&lt;/code&gt; state of the ad elements need to be parsed and stored.
+And when an ad element is inspected only the stored &lt;code class=&quot;highlighter-rouge&quot;&gt;visibility&lt;/code&gt; state needs to be returned.&lt;/p&gt;
+
+&lt;p&gt;But this approach does seem complicated and does not allow collapsing of the ad space.&lt;/p&gt;
+
+&lt;h2 id=&quot;performant-and-reliable-ad-element-detection&quot;&gt;Performant &lt;em&gt;and&lt;/em&gt; Reliable Ad Element Detection&lt;/h2&gt;
+&lt;p&gt;Finally one of the issues with using asynchronous DOM modification events was that the creation of ad elements could not always be handled in time.
+We can overcome this by either marking the ad element with a new ad block style (ex: &lt;code class=&quot;highlighter-rouge&quot;&gt;content: 'AD-ELEMENT'&lt;/code&gt;) or having the equivalent of a whitelist and black list, and any unclassified elements would be treated as being blacklisted.&lt;/p&gt;
+
+&lt;p&gt;However if we use the ‘Parallel DOM’ approach this will no longer be an issue since we can pass all element inspection calls directly to the shadow DOM with hopefully a negligible performance overhead.&lt;/p&gt;
+
+&lt;h1 id=&quot;closing&quot;&gt;Closing&lt;/h1&gt;
+&lt;p&gt;We have looked at a way to thwart ad block detection if some compromises, such as content loading, can be made.
+Then we touched on how it could be made more performant.
+Finally there are some limitations in this approach which effect performance and reliability but we do have some good options to look into for addressing these.&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/mikeiz404/adblockpluschrome-mirage&quot;&gt;&lt;i class=&quot;fa fa-github-square&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt; GitHub Repo: AdBlock Plus + “Mirage”&lt;/a&gt;&lt;/p&gt;</content><author><name></name></author><category term="Project: Ad Block" /><summary type="html"></summary></entry><entry><title type="html">Interesting Readings</title><link href="/2017/10/22/Interesting-Readings" rel="alternate" type="text/html" title="Interesting Readings" /><published>2017-10-22T00:00:00-07:00</published><updated>2017-11-09T19:31:18-08:00</updated><id>/2017/10/22/Interesting-Readings</id><content type="html" xml:base="/2017/10/22/Interesting-Readings">&lt;h1 id=&quot;technology&quot;&gt;Technology&lt;/h1&gt;
+&lt;h2 id=&quot;block-chain--crypto-currencies&quot;&gt;Block Chain &amp;amp; Crypto Currencies&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://bitcoin.org/bitcoin.pdf&quot;&gt;Bitcoin: White Paper&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/ethereum/wiki/wiki/White-Paper&quot;&gt;Ethereum: White Paper&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://swarm-gateways.net/bzz:/theswarm.eth/ethersphere/orange-papers/1/sw^3.pdf&quot;&gt;SWARM: Orange Paper 1&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/ipfs/papers/raw/master/ipfs-cap2pfs/ipfs-p2p-file-system.pdf&quot;&gt;IPFS: White Paper&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;networking&quot;&gt;Networking&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.researchgate.net/publication/224170739_LEDBAT_The_new_bittorrent_congestion_control_protocol&quot;&gt;LEDBAT: the new BitTorrent congestion control protocol&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.internet2.edu/presentations/jt2009jul/20090722-litvanyi.pdf&quot;&gt;Use and Limits of Traceroute&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.researchgate.net/publication/265040969_Dissecting_Round_Trip_Time_on_the_Slow_Path_with_a_Single_Packet&quot;&gt;Dissecting Round Trip Time on the Slow Path with a Single Packet&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1 id=&quot;social&quot;&gt;Social&lt;/h1&gt;
+&lt;h2 id=&quot;us-politics&quot;&gt;US Politics&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://scholar.princeton.edu/sites/default/files/mgilens/files/gilens_and_page_2014_-testing_theories_of_american_politics.doc.pdf&quot;&gt;Testing Theories of American Politics:Elites, Interest Groups, and Average Citizens&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.rand.org/content/dam/rand/pubs/perspectives/PE100/PE198/RAND_PE198.pdf&quot;&gt;The Russian “Firehose of Falsehood” Propaganda Model&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;media&quot;&gt;Media&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;http://www.cs.cornell.edu/home/kleinber/kdd09-quotes.pdf&quot;&gt;Meme-tracking and the Dynamics of the News Cycle&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;</content><author><name></name></author><summary type="html">Technology Block Chain &amp;amp; Crypto Currencies Bitcoin: White Paper Ethereum: White Paper SWARM: Orange Paper 1 IPFS: White Paper</summary></entry><entry><title type="html">Backpacking Notes</title><link href="/2017/06/07/Backpacking-Notes" rel="alternate" type="text/html" title="Backpacking Notes" /><published>2017-06-07T00:00:00-07:00</published><updated>2017-10-22T15:13:07-07:00</updated><id>/2017/06/07/Backpacking-Notes</id><content type="html" xml:base="/2017/06/07/Backpacking-Notes">&lt;h1 id=&quot;estimations--rules-of-thumb&quot;&gt;Estimations &amp;amp; Rules of Thumb&lt;/h1&gt;
+&lt;ul&gt;
+  &lt;li&gt;Travel speed (upper bound) &lt;a href=&quot;https://en.wikipedia.org/wiki/Naismith's_rule&quot;&gt;[Naismith’s rule]&lt;/a&gt;
+    &lt;ul&gt;
+      &lt;li&gt;~3mph on flat terrain&lt;/li&gt;
+      &lt;li&gt;~1/2h per 1,000ft of elevation gain&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Temperature &lt;a href=&quot;http://www.onthesnow.com/news/a/15157/does-elevation-affect-temperature-&quot;&gt;[source]&lt;/a&gt;
+    &lt;ul&gt;
+      &lt;li&gt;Low relative humidity (ex: clear skies): ~-5.4F per 1,000ft of elevation gain&lt;/li&gt;
+      &lt;li&gt;High relative humidity (ex: rain, snow): ~-3.3F per 1,000ft of elevation gain&lt;/li&gt;
+      &lt;li&gt;Exceptions: Cloud cover will trap some heat, large bodies of water can increase local humidity and store heat (large thermal mass), wind chill, air streams, …&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Water Weight &lt;a href=&quot;http://convert-to.com/conversion/water-weight-volume/convert-liter-l-of-water-volume-to-pound-lb-of-water-weight.html&quot;&gt;[source]&lt;/a&gt;
+    &lt;ul&gt;
+      &lt;li&gt;~2.2lb per 1L of water&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1 id=&quot;managing-local-fauna&quot;&gt;Managing Local Fauna&lt;/h1&gt;
+&lt;h2 id=&quot;hanging-food-bags&quot;&gt;Hanging Food Bags&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;PCT Method for Bear Bag &lt;a href=&quot;https://www.youtube.com/watch?v=1PFwSI3BtV4&quot;&gt;[video]&lt;/a&gt;
+    &lt;ul&gt;
+      &lt;li&gt;Limb Selection
+        &lt;ul&gt;
+          &lt;li&gt;high enough so that half way up, where bag rests, is out of reach from a bear (~20ft+ limb height)&lt;/li&gt;
+          &lt;li&gt;small enough diameter that a bear cannot climb out onto limb&lt;/li&gt;
+          &lt;li&gt;far enough from neighboring trees to not allow other animals to jump onto the bag&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;Requirements: Carabiner, Rod/Found Branch, Bag and Cord&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1 id=&quot;managing-your-health&quot;&gt;Managing Your Health&lt;/h1&gt;
+&lt;h2 id=&quot;in-general&quot;&gt;In General&lt;/h2&gt;
+&lt;h3 id=&quot;dehydration&quot;&gt;Dehydration&lt;/h3&gt;
+&lt;p&gt;Background:
+Water is used to transport nutrients, oxygen, waste, and heat throughout your body.
+~2-3L/day lost during rest, ~1-2L/hour during strenuous exercise (varies greatly by individual).&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Cause: water deficiency (Can be cumulative from previous days)&lt;/li&gt;
+  &lt;li&gt;Symptoms
+    &lt;ul&gt;
+      &lt;li&gt;mild headache&lt;/li&gt;
+      &lt;li&gt;feeling tired&lt;/li&gt;
+      &lt;li&gt;thirst&lt;/li&gt;
+      &lt;li&gt;decreased endurance (~-22% @ -1.5L, ~-50% @ -3-4L)&lt;/li&gt;
+      &lt;li&gt;dry lips and mouth&lt;/li&gt;
+      &lt;li&gt;dark yellow urine&lt;/li&gt;
+      &lt;li&gt;moderate/severe: rapid, weak pulse&lt;/li&gt;
+      &lt;li&gt;severe: cognitive disfunction (drowsy, lethargic, disoriented, irritable), no urine or tears, shock&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Treatment: drink water&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;in-the-cold&quot;&gt;In the Cold&lt;/h2&gt;
+&lt;p&gt;Background:
+Dry cold air removes water more rapidly when breathing (quicker evaporation/equalization).&lt;/p&gt;
+
+&lt;p&gt;Also see “Dehydration”.&lt;/p&gt;
+
+&lt;h3 id=&quot;hypothermia&quot;&gt;Hypothermia&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;Cause: decreased core temperature (&amp;lt;90F)&lt;/li&gt;
+  &lt;li&gt;Symptoms &lt;a href=&quot;https://www.mayoclinic.org/diseases-conditions/hypothermia/symptoms-causes/dxc-20318121&quot;&gt;[source]&lt;/a&gt;
+    &lt;ul&gt;
+      &lt;li&gt;shivering&lt;/li&gt;
+      &lt;li&gt;slurred speech&lt;/li&gt;
+      &lt;li&gt;decreased balance, coordination&lt;/li&gt;
+      &lt;li&gt;low energy, drowsiness&lt;/li&gt;
+      &lt;li&gt;confusion, memory loss&lt;/li&gt;
+      &lt;li&gt;(note: similar to being drunk)&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Treatment: prevent cooling and get core temperature in center of body up ASAP &lt;a href=&quot;https://www.backpacker.com/skills/hypothermia-101&quot;&gt;[source]&lt;/a&gt;
+    &lt;ul&gt;
+      &lt;li&gt;find shelter from cold and wet environment (ex: set up camp)&lt;/li&gt;
+      &lt;li&gt;immediately remove wet clothes (and replace with dry ones)&lt;/li&gt;
+      &lt;li&gt;put on insulated garments (ex: get into sleeping bag with pad)&lt;/li&gt;
+      &lt;li&gt;have warm high energy beverages or foods (heat + calories)&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;in-the-heat&quot;&gt;In the Heat&lt;/h2&gt;
+&lt;p&gt;Background:
+Perspiration is composed of water and electrolytes.
+Hot humid air makes sweating less efficient so sweat more (slower evaporation/equalization).&lt;/p&gt;
+
+&lt;p&gt;Also see “Dehydration”.&lt;/p&gt;
+
+&lt;h3 id=&quot;heat-exhaustion&quot;&gt;Heat Exhaustion&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;Cause: ineffective hydration due to heat stress, and water and electrolyte loss&lt;/li&gt;
+  &lt;li&gt;Symptoms
+    &lt;ul&gt;
+      &lt;li&gt;rapid pulse, rapid breathing&lt;/li&gt;
+      &lt;li&gt;headache&lt;/li&gt;
+      &lt;li&gt;nausea, dizziness, lightheaded&lt;/li&gt;
+      &lt;li&gt;thirst&lt;/li&gt;
+      &lt;li&gt;fatigue&lt;/li&gt;
+    &lt;/ul&gt;
+
+    &lt;p&gt;&lt;em&gt;Note: (often) yellow urine, low output (occurring infrequently: 6-8 hours)&lt;/em&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Treatment
+    &lt;ul&gt;
+      &lt;li&gt;cool down (ex: rest, shade, fanning, spray water)&lt;/li&gt;
+      &lt;li&gt;hydrate (water + electrolytes/salt)&lt;/li&gt;
+    &lt;/ul&gt;
+
+    &lt;p&gt;&lt;em&gt;Note: ~1hr to get 1L of fluid back into circulation&lt;/em&gt;&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;heatstroke-stroke-exertional-&quot;&gt;Heatstroke Stroke: Exertional ☠&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;Life threatening: Patient needs rapid evacuation. “Death has been known to occur within .5h of assessment”. Relapse not uncommon.&lt;/li&gt;
+  &lt;li&gt;Cause: core temperature too high for the brain (&amp;gt;=105F)
+    &lt;ul&gt;
+      &lt;li&gt;unable to cool adequately, often dehydrated&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Symptoms
+    &lt;ul&gt;
+      &lt;li&gt;sudden cognitive disfunction: disorientation, irritability, combativeness, hallucinations, bizarre delusions, incoherent speech&lt;/li&gt;
+      &lt;li&gt;rapid breathing, rapid pulse&lt;/li&gt;
+      &lt;li&gt;skin hot and red, wet with sweat&lt;/li&gt;
+      &lt;li&gt;loss of coordination&lt;/li&gt;
+      &lt;li&gt;seizures&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Treatment&lt;/p&gt;
+
+    &lt;p&gt;&lt;em&gt;Note: very time consuming&lt;/em&gt;&lt;/p&gt;
+    &lt;ul&gt;
+      &lt;li&gt;rapid cooling to improve mental functions (full body bathing but careful of drowning due to poor cognition, cooling of head and neck, fanning, spray with water)&lt;/li&gt;
+      &lt;li&gt;rehydration (do not force fluid when cognitively impaired)&lt;/li&gt;
+      &lt;li&gt;evacuation: see physician ASAP&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;hyponatremia-water-toxicity&quot;&gt;Hyponatremia (Water Toxicity)&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;Cause: low blood sodium level
+    &lt;ul&gt;
+      &lt;li&gt;high water intake, and salt loss (sweating)&lt;/li&gt;
+      &lt;li&gt;low salt intake (ex: not eating food or high salt beverages)&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Symptoms:&lt;/p&gt;
+
+    &lt;p&gt;&lt;em&gt;Note: Similar to Heat Exhaustion, EXCEPT (often) urine is “clear and copious” (occurring every few hours, several times per hour) and lack of thirst.&lt;/em&gt;&lt;/p&gt;
+
+    &lt;ul&gt;
+      &lt;li&gt;headache, lightheaded&lt;/li&gt;
+      &lt;li&gt;weakness, fatigue&lt;/li&gt;
+      &lt;li&gt;nausea, vomiting&lt;/li&gt;
+      &lt;li&gt;sweaty skin&lt;/li&gt;
+      &lt;li&gt;anxiety&lt;/li&gt;
+      &lt;li&gt;severe: disoriented, irritable, combative&lt;/li&gt;
+      &lt;li&gt;normal core temp., normal or slightly elevated pulse and breathing&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Treatment
+    &lt;ul&gt;
+      &lt;li&gt;rest (shade)&lt;/li&gt;
+      &lt;li&gt;stop fluid intake&lt;/li&gt;
+      &lt;li&gt;eat salty foods (beverages often have not enough salt concentration)&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;heat-cramps&quot;&gt;Heat Cramps&lt;/h3&gt;
+&lt;p&gt;&lt;em&gt;Note: most likely to affect people unacclimatized to the heat and who sweat profusely&lt;/em&gt;&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Cause: water and electrolyte loss (probably)&lt;/li&gt;
+  &lt;li&gt;Symptoms: spasms of the major muscles being worked&lt;/li&gt;
+  &lt;li&gt;Treatment
+    &lt;ul&gt;
+      &lt;li&gt;rest and gentle stretching&lt;/li&gt;
+      &lt;li&gt;water + electrolytes/salt&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1 id=&quot;resources&quot;&gt;Resources&lt;/h1&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.amazon.com/Wilderness-First-Responder-Emergencies-Backcountry/dp/0762754567&quot;&gt;Wilderness First Responder: How To Recognize, Treat, And Prevent Emergencies In The Backcountry&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;</content><author><name></name></author><category term="Notes" /><summary type="html">Estimations &amp;amp; Rules of Thumb Travel speed (upper bound) [Naismith’s rule] ~3mph on flat terrain ~1/2h per 1,000ft of elevation gain</summary></entry><entry><title type="html">A Stroll through Lower Antelope Canyon</title><link href="/2017/05/30/Lower-Antelope-Canyon" rel="alternate" type="text/html" title="A Stroll through Lower Antelope Canyon" /><published>2017-05-30T00:00:00-07:00</published><updated>2017-10-09T21:16:28-07:00</updated><id>/2017/05/30/Lower-Antelope-Canyon</id><content type="html" xml:base="/2017/05/30/Lower-Antelope-Canyon">&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37608223231/in/album-72157689285772096/&quot; title=&quot;P1012343&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4493/37608223231_a314331ef9_z.jpg&quot; alt=&quot;P1012343&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37349375510/in/album-72157689285772096/&quot; title=&quot;P1012365&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4500/37349375510_d5dc3b6d00_z.jpg&quot; alt=&quot;P1012365&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/23755413648/in/album-72157689285772096/&quot; title=&quot;P1012373&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4487/23755413648_12933973cc_z.jpg&quot; alt=&quot;P1012373&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37575908082/in/album-72157689285772096/&quot; title=&quot;P1012374&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4465/37575908082_d0ba68b67c_z.jpg&quot; alt=&quot;P1012374&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37575863282/in/album-72157689285772096/&quot; title=&quot;P1012375&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4502/37575863282_7cd79bb664_z.jpg&quot; alt=&quot;P1012375&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/23755388918/in/album-72157689285772096/&quot; title=&quot;P1012379&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4446/23755388918_6f09b4fdae_z.jpg&quot; alt=&quot;P1012379&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36937532443/in/album-72157689285772096/&quot; title=&quot;P1012384&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4501/36937532443_9a0c36be94_z.jpg&quot; alt=&quot;P1012384&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37559150656/in/album-72157689285772096/&quot; title=&quot;P1012385&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4511/37559150656_7fe3e25f96_z.jpg&quot; alt=&quot;P1012385&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36897579954/in/album-72157689285772096/&quot; title=&quot;P1012387&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4446/36897579954_83881ba1ef_z.jpg&quot; alt=&quot;P1012387&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37559174466/in/album-72157689285772096/&quot; title=&quot;P1012426&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4459/37559174466_2e9d197fbc_z.jpg&quot; alt=&quot;P1012426&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36937548153/in/album-72157689285772096/&quot; title=&quot;P1012432&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4484/36937548153_9a7dde5fe4_z.jpg&quot; alt=&quot;P1012432&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37608251621/in/album-72157689285772096/&quot; title=&quot;P1012435&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4490/37608251621_08ceb5d821_z.jpg&quot; alt=&quot;P1012435&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37608261241/in/album-72157689285772096/&quot; title=&quot;P1012455&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4443/37608261241_a15ef364f6_z.jpg&quot; alt=&quot;P1012455&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37608241171/in/album-72157689285772096/&quot; title=&quot;P1012457&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4508/37608241171_3d88d09d0e_z.jpg&quot; alt=&quot;P1012457&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37608234891/in/album-72157689285772096/&quot; title=&quot;P1012462&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4445/37608234891_b02313fb03_z.jpg&quot; alt=&quot;P1012462&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37608209781/in/album-72157689285772096/&quot; title=&quot;P1012472&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4494/37608209781_878e93e38d_z.jpg&quot; alt=&quot;P1012472&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37575911422/in/album-72157689285772096/&quot; title=&quot;P1012473&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4444/37575911422_cc162a5832_z.jpg&quot; alt=&quot;P1012473&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37608245341/in/album-72157689285772096/&quot; title=&quot;P1012476&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4443/37608245341_eba4208cdf_z.jpg&quot; alt=&quot;P1012476&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37575867522/in/album-72157689285772096/&quot; title=&quot;P1012487&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4457/37575867522_aedf667f9c_z.jpg&quot; alt=&quot;P1012487&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36897594474/in/album-72157689285772096/&quot; title=&quot;P1012506&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4455/36897594474_4d80ae1376_z.jpg&quot; alt=&quot;P1012506&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36897607854/in/album-72157689285772096/&quot; title=&quot;P1012510&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4488/36897607854_28e4b60f85_z.jpg&quot; alt=&quot;P1012510&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/23755437598/in/album-72157689285772096/&quot; title=&quot;P1012516&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4447/23755437598_0f9808fdd8_z.jpg&quot; alt=&quot;P1012516&quot; /&gt;&lt;/a&gt;&lt;/p&gt;</content><author><name></name></author><summary type="html"></summary></entry><entry><title type="html">A Trip to Horseshoe Bend</title><link href="/2017/05/30/Horseshoe-Bend" rel="alternate" type="text/html" title="A Trip to Horseshoe Bend" /><published>2017-05-30T00:00:00-07:00</published><updated>2017-10-20T16:30:05-07:00</updated><id>/2017/05/30/Horseshoe-Bend</id><content type="html" xml:base="/2017/05/30/Horseshoe-Bend">&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37449693472/in/album-72157686886005860/&quot; title=&quot;P1012136&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4505/37449693472_d2250ceeb0_c.jpg&quot; alt=&quot;P1012136&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/23628346238/in/album-72157686886005860/&quot; title=&quot;P1012130&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4474/23628346238_64c8d27434_c.jpg&quot; alt=&quot;P1012130&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36811015293/in/album-72157686886005860/&quot; title=&quot;P1012122&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4468/36811015293_6b65a44f44_c.jpg&quot; alt=&quot;P1012122&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37449698692/in/album-72157686886005860/&quot; title=&quot;P1012109&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4492/37449698692_f3f4b935e7_c.jpg&quot; alt=&quot;P1012109&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36811010983/in/album-72157686886005860/&quot; title=&quot;P1012106&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4455/36811010983_cf0700cac7_c.jpg&quot; alt=&quot;P1012106&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37480445091/in/album-72157686886005860/&quot; title=&quot;P1012102&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4467/37480445091_a13108775f_c.jpg&quot; alt=&quot;P1012102&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37480439731/in/album-72157686886005860/&quot; title=&quot;P1012094&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4451/37480439731_1c3f8f0836_c.jpg&quot; alt=&quot;P1012094&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37432825906/in/album-72157686886005860/&quot; title=&quot;P1012090&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4493/37432825906_27657a69b7_c.jpg&quot; alt=&quot;P1012090&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37480428041/in/album-72157686886005860/&quot; title=&quot;P1010067&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4457/37480428041_89c2aa2fa5_c.jpg&quot; alt=&quot;P1010067&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36810976003/in/album-72157686886005860/&quot; title=&quot;P1010053&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4459/36810976003_81d637b1ff_c.jpg&quot; alt=&quot;P1010053&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36810972363/in/album-72157686886005860/&quot; title=&quot;P1010045&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4507/36810972363_a75b165c9e_c.jpg&quot; alt=&quot;P1010045&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37449725372/in/album-72157686886005860/&quot; title=&quot;P1010044&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4456/37449725372_2e7bdedacb_c.jpg&quot; alt=&quot;P1010044&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/23628382708/in/album-72157686886005860/&quot; title=&quot;P1010037&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4470/23628382708_4cab4efc2b_c.jpg&quot; alt=&quot;P1010037&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36810961453/in/album-72157686886005860/&quot; title=&quot;P1010035&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4443/36810961453_aa48702fd8_c.jpg&quot; alt=&quot;P1010035&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/23628373938/in/album-72157686886005860/&quot; title=&quot;P1010023&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4489/23628373938_a51465cf22_c.jpg&quot; alt=&quot;P1010023&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/23628369508/in/album-72157686886005860/&quot; title=&quot;P1010011&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4475/23628369508_2235c50718_c.jpg&quot; alt=&quot;P1010011&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37222578180/in/album-72157686886005860/&quot; title=&quot;P1010010&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4473/37222578180_96c5578731_c.jpg&quot; alt=&quot;P1010010&quot; /&gt;&lt;/a&gt;&lt;/p&gt;</content><author><name></name></author><summary type="html"></summary></entry><entry><title type="html">A Windless Day at Crater Lake</title><link href="/2016/06/20/Crater-Lake" rel="alternate" type="text/html" title="A Windless Day at Crater Lake" /><published>2016-06-20T00:00:00-07:00</published><updated>2017-10-03T14:11:32-07:00</updated><id>/2016/06/20/Crater-Lake</id><content type="html" xml:base="/2016/06/20/Crater-Lake">&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36775619403/in/album-72157686818576280/&quot; title=&quot;P1011932&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4493/36775619403_d2c3cb7f29_c.jpg&quot; alt=&quot;P1011932&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/23595225658/in/album-72157686818576280/&quot; title=&quot;P1011934&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4358/23595225658_802c587062_c.jpg&quot; alt=&quot;P1011934&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36775614213/in/album-72157686818576280/&quot; title=&quot;P1011936&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4406/36775614213_0ed509715f_c.jpg&quot; alt=&quot;P1011936&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37416242392/in/album-72157686818576280/&quot; title=&quot;P1011938&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4511/37416242392_aca9155817_c.jpg&quot; alt=&quot;P1011938&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/23593965638/in/album-72157686818576280/&quot; title=&quot;P1011960&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4446/23593965638_cfec7bc0af_c.jpg&quot; alt=&quot;P1011960&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/23593960948/in/album-72157686818576280/&quot; title=&quot;P1011967&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4434/23593960948_fee1f8180f_c.jpg&quot; alt=&quot;P1011967&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/23593956468/in/album-72157686818576280/&quot; title=&quot;P1011968&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4455/23593956468_36798e6c6d_c.jpg&quot; alt=&quot;P1011968&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36775609603/in/album-72157686818576280/&quot; title=&quot;P1011944&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4489/36775609603_043938bde6_c.jpg&quot; alt=&quot;P1011944&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36775602043/in/album-72157686818576280/&quot; title=&quot;P1011946&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4466/36775602043_ce7978bd67_c.jpg&quot; alt=&quot;P1011946&quot; /&gt;&lt;/a&gt;&lt;/p&gt;</content><author><name></name></author><summary type="html"></summary></entry><entry><title type="html">Backpacking Part of the Pacific Crest Trail: Bridge of the Gods, North</title><link href="/2016/06/15/PCT-Bridge-of-the-Gods" rel="alternate" type="text/html" title="Backpacking Part of the Pacific Crest Trail: Bridge of the Gods,  North" /><published>2016-06-15T00:00:00-07:00</published><updated>2017-10-12T08:37:42-07:00</updated><id>/2016/06/15/PCT-Bridge-of-the-Gods</id><content type="html" xml:base="/2016/06/15/PCT-Bridge-of-the-Gods">&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37183371700/in/album-72157685979882011/&quot; title=&quot;P1011501&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4361/37183371700_b14783e5b3_c.jpg&quot; alt=&quot;P1011501&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37392986666/in/album-72157685979882011/&quot; title=&quot;P1011527&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4389/37392986666_e04e0f118f_c.jpg&quot; alt=&quot;P1011527&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36730977864/in/album-72157685979882011/&quot; title=&quot;P1011532&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4436/36730977864_29a38e91e3_c.jpg&quot; alt=&quot;P1011532&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36730927084/in/album-72157685979882011/&quot; title=&quot;P1011541&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4488/36730927084_f1670cae46_c.jpg&quot; alt=&quot;P1011541&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37409456542/in/album-72157685979882011/&quot; title=&quot;P1011563&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4419/37409456542_1a0b522403_c.jpg&quot; alt=&quot;P1011563&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37445694251/in/album-72157685979882011/&quot; title=&quot;P1011577&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4399/37445694251_0b6e5a998f_c.jpg&quot; alt=&quot;P1011577&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37183453940/in/album-72157685979882011/&quot; title=&quot;P1011595&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4370/37183453940_326c2f2f8c_c.jpg&quot; alt=&quot;P1011595&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37409484952/in/album-72157685979882011/&quot; title=&quot;P1011631&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4491/37409484952_c252d6ccb0_c.jpg&quot; alt=&quot;P1011631&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37409555962/in/album-72157685979882011/&quot; title=&quot;P1011687&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4489/37409555962_148f9b0688_c.jpg&quot; alt=&quot;P1011687&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37409479652/in/album-72157685979882011/&quot; title=&quot;P1011724&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4401/37409479652_48786d4baf_c.jpg&quot; alt=&quot;P1011724&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36770334303/in/album-72157685979882011/&quot; title=&quot;P1011725&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4455/36770334303_0a7ba1cbd3_c.jpg&quot; alt=&quot;P1011725&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37393021706/in/album-72157685979882011/&quot; title=&quot;P1011731&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4469/37393021706_da71473124_c.jpg&quot; alt=&quot;P1011731&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36730918564/in/album-72157685979882011/&quot; title=&quot;P1011735&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4342/36730918564_cf9955b3d5_c.jpg&quot; alt=&quot;P1011735&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/23588663898/in/album-72157685979882011/&quot; title=&quot;P1011742&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4396/23588663898_d475a38f44_c.jpg&quot; alt=&quot;P1011742&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37440461741/in/album-72157685979882011/&quot; title=&quot;P1011745&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4490/37440461741_91dae85504_c.jpg&quot; alt=&quot;P1011745&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37393034026/in/album-72157685979882011/&quot; title=&quot;P1011780&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4338/37393034026_56ba32bd1e_c.jpg&quot; alt=&quot;P1011780&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37409570862/in/album-72157685979882011/&quot; title=&quot;P1011796&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4496/37409570862_55135a65d8_c.jpg&quot; alt=&quot;P1011796&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37392992896/in/album-72157685979882011/&quot; title=&quot;P1011800&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4417/37392992896_a1155ea5d6_c.jpg&quot; alt=&quot;P1011800&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37440432541/in/album-72157685979882011/&quot; title=&quot;P1011825&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4406/37440432541_a85e27e1a2_c.jpg&quot; alt=&quot;P1011825&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37409544552/in/album-72157685979882011/&quot; title=&quot;P1011832&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4355/37409544552_3828eef9c5_c.jpg&quot; alt=&quot;P1011832&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36770307553/in/album-72157685979882011/&quot; title=&quot;P1011854&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4451/36770307553_c7757dab62_c.jpg&quot; alt=&quot;P1011854&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37183336000/in/album-72157685979882011/&quot; title=&quot;P1011905&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4502/37183336000_bdc5a9a364_c.jpg&quot; alt=&quot;P1011905&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37183275850/in/album-72157685979882011/&quot; title=&quot;P1011913&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4484/37183275850_7f20d75d65_c.jpg&quot; alt=&quot;P1011913&quot; /&gt;&lt;/a&gt;&lt;/p&gt;</content><author><name></name></author><summary type="html"></summary></entry><entry><title type="html">The Baylands</title><link href="/2016/03/15/Baylands" rel="alternate" type="text/html" title="The Baylands" /><published>2016-03-15T00:00:00-07:00</published><updated>2017-10-11T18:39:23-07:00</updated><id>/2016/03/15/Baylands</id><content type="html" xml:base="/2016/03/15/Baylands">&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37613025212/in/album-72157687887785923/&quot; title=&quot;P1012061&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4485/37613025212_aff0cdcc06_z.jpg&quot; alt=&quot;P1012061&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37596622766/in/album-72157687887785923/&quot; title=&quot;P1012075&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4507/37596622766_49d2c9bc09_z.jpg&quot; alt=&quot;P1012075&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/23792440518/in/album-72157687887785923/&quot; title=&quot;P7130311&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4491/23792440518_3fc0e9d450_z.jpg&quot; alt=&quot;P7130311&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37387135780/in/album-72157687887785923/&quot; title=&quot;P7130318&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4501/37387135780_ae68ddaa69_z.jpg&quot; alt=&quot;P7130318&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/23792446608/in/album-72157687887785923/&quot; title=&quot;P7130320&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4486/23792446608_904555e296_z.jpg&quot; alt=&quot;P7130320&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37387147510/in/album-72157687887785923/&quot; title=&quot;P7130321&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4455/37387147510_8830606598_z.jpg&quot; alt=&quot;P7130321&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37387137570/in/album-72157687887785923/&quot; title=&quot;P7130346&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4447/37387137570_85dff75ddf_z.jpg&quot; alt=&quot;P7130346&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/37596629836/in/album-72157687887785923/&quot; title=&quot;P7130354&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4486/37596629836_00707df690_z.jpg&quot; alt=&quot;P7130354&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36935017844/in/album-72157687887785923/&quot; title=&quot;P7130356&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4478/36935017844_1fa73212c2_z.jpg&quot; alt=&quot;P7130356&quot; /&gt;&lt;/a&gt;
+&lt;a data-flickr-embed=&quot;true&quot; target=&quot;_blank&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/36935023484/in/album-72157687887785923/&quot; title=&quot;P7130366&quot;&gt;&lt;img src=&quot;https://farm5.staticflickr.com/4493/36935023484_7c102a69dc_z.jpg&quot; alt=&quot;P7130366&quot; /&gt;&lt;/a&gt;&lt;/p&gt;</content><author><name></name></author><summary type="html"></summary></entry></feed>
