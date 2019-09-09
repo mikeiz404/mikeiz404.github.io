@@ -1,4 +1,38 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2017-11-09T19:31:27-08:00</updated><id>/</id><title type="html">Mike Wilson</title><entry><title type="html">Project: AdBlock Mirage</title><link href="/2017/11/03/Project-AdBlock-Mirage" rel="alternate" type="text/html" title="Project: AdBlock Mirage" /><published>2017-11-03T00:00:00-07:00</published><updated>2017-11-08T16:16:11-08:00</updated><id>/2017/11/03/Project-AdBlock-Mirage</id><content type="html" xml:base="/2017/11/03/Project-AdBlock-Mirage">&lt;p&gt;&lt;img src=&quot;/resources/2017-11-03-Project-AdBlock-Mirage/mirage-demo.gif&quot; alt=&quot;Adblock Plus + &amp;quot;Mirage&amp;quot; Demo&quot; /&gt;&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2019-09-19T18:31:43-07:00</updated><id>/</id><title type="html">Mike Wilson</title><entry><title type="html">A Hike Up Half Dome</title><link href="/2019/09/13/Half-Dome" rel="alternate" type="text/html" title="A Hike Up Half Dome" /><published>2019-09-13T00:00:00-07:00</published><updated>2019-09-19T18:24:41-07:00</updated><id>/2019/09/13/Half-Dome</id><content type="html" xml:base="/2019/09/13/Half-Dome"></content><author><name></name></author><summary type="html"></summary></entry><entry><title type="html">Resources: WireGuard on Ubuntu Server</title><link href="/2019/09/09/WireGuardResources" rel="alternate" type="text/html" title="Resources: WireGuard on Ubuntu Server" /><published>2019-09-09T00:00:00-07:00</published><updated>2019-09-19T18:31:28-07:00</updated><id>/2019/09/09/WireGuardResources</id><content type="html" xml:base="/2019/09/09/WireGuardResources">&lt;h1 id=&quot;primary&quot;&gt;Primary&lt;/h1&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://emanuelduss.ch/2018/09/wireguard-vpn-road-warrior-setup/&quot;&gt;WireGuard Setup as a Gateway (Road Warrior)&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1 id=&quot;supplemental&quot;&gt;Supplemental&lt;/h1&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.wireguard.com/quickstart/&quot;&gt;WireGuard Quick Start&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.karlrupp.net/en/computer/nat_tutorial&quot;&gt;NAT Tutorial with iptables&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1 id=&quot;notes&quot;&gt;Notes&lt;/h1&gt;
+&lt;ul&gt;
+  &lt;li&gt;There is little distinction between “server” (Endpoint) and “client” (Peer). A tunnel is established between a Peer’s interface and an Endpoint’s interface. Which traffic goes over the interface to the &lt;code class=&quot;highlighter-rouge&quot;&gt;Endpoint&lt;/code&gt; is determined by the &lt;code class=&quot;highlighter-rouge&quot;&gt;AllowedIPs&lt;/code&gt; of the Peer. Use &lt;code class=&quot;highlighter-rouge&quot;&gt;0.0.0.0/0&lt;/code&gt; for all traffic.&lt;/li&gt;
+  &lt;li&gt;WireGuard can be configured to give the interface a static IP as defined in the configuration file as well as which DNS server to use. I suspect dynamic allocation could be done if one were willing to configure a DHCP service on the server.&lt;/li&gt;
+  &lt;li&gt;Use &lt;code class=&quot;highlighter-rouge&quot;&gt;wg-quick&lt;/code&gt; to setup the wg service and interface
+    &lt;ul&gt;
+      &lt;li&gt;It will handle configuring the interface such as setting the ip, bringing it up, and configuring DNS&lt;/li&gt;
+      &lt;li&gt;The syntax for the &lt;code class=&quot;highlighter-rouge&quot;&gt;wg-quick&lt;/code&gt; config file appears to be a superset of the wg config file&lt;/li&gt;
+      &lt;li&gt;There is a handy systemd script which will handle interface config and execute pre-up and post-down commands which are useful for running iptables commands&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;tcpdump&lt;/code&gt; is quite useful for debugging. For example try &lt;code class=&quot;highlighter-rouge&quot;&gt;tcpdump -i wg0&lt;/code&gt; on the server while pinging on the client to make sure traffic is being sent to the server over the tunnel&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;sample-configuration&quot;&gt;Sample Configuration&lt;/h2&gt;
+&lt;h3 id=&quot;client&quot;&gt;Client&lt;/h3&gt;
+&lt;noscript&gt;&lt;pre&gt;400: Invalid request
+&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/55eb3ab1f732b3b81b2c634c4117630a.js&quot;&gt; &lt;/script&gt;
+
+&lt;h3 id=&quot;server&quot;&gt;Server&lt;/h3&gt;
+&lt;noscript&gt;&lt;pre&gt;400: Invalid request
+&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/9016653ccf3b95a808bfe5a62882583a.js&quot;&gt; &lt;/script&gt;</content><author><name></name></author><summary type="html">Primary WireGuard Setup as a Gateway (Road Warrior)</summary></entry><entry><title type="html">Project: AdBlock Mirage</title><link href="/2017/11/03/Project-AdBlock-Mirage" rel="alternate" type="text/html" title="Project: AdBlock Mirage" /><published>2017-11-03T00:00:00-07:00</published><updated>2017-11-08T16:16:11-08:00</updated><id>/2017/11/03/Project-AdBlock-Mirage</id><content type="html" xml:base="/2017/11/03/Project-AdBlock-Mirage">&lt;p&gt;&lt;img src=&quot;/resources/2017-11-03-Project-AdBlock-Mirage/mirage-demo.gif&quot; alt=&quot;Adblock Plus + &amp;quot;Mirage&amp;quot; Demo&quot; /&gt;&lt;/p&gt;
 
 &lt;h1 id=&quot;motivation&quot;&gt;Motivation&lt;/h1&gt;
 &lt;p&gt;&lt;em&gt;You may want to skip this section if you are already familiar with ad blocking techniques.&lt;/em&gt;&lt;/p&gt;

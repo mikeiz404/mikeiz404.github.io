@@ -4,7 +4,7 @@
 <html lang="en">
 
   <head>
-  <title>Interesting Readings — Mike Wilson</title>
+  <title>Resources: WireGuard on Ubuntu Server — Mike Wilson</title>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -76,20 +76,16 @@
 
   <!-- header -->
   <section class="article-header">
-    <h1 class="title">Interesting Readings</h1>
-    <p class="subtitle">A collection of thought engaging papers, articles, and the sort on various topics</p>
+    <h1 class="title">Resources: WireGuard on Ubuntu Server</h1>
+    <p class="subtitle">Setting up WireGuard (0.0.20190905) on Ubuntu Server (18.04.3 LTS)</p>
 
     <div class="info-container">
       
       <span class="info reading-time"><b> 1 minute</b> read</span>
       
       
-      <span class="info updated" data-datetime="2017-11-09" title="Nov 9, 2017">
-        Nov 9, 2017
-      </span>
-      
-      <span class="info created" data-datetime="2017-10-22 00:00:00 -0700" title="Oct 22, 2017">
-        Oct 22, 2017
+      <span class="info created" data-datetime="2019-09-09 00:00:00 -0700" title="Sep 9, 2019">
+        Sep 9, 2019
       </span>
     </div>
 
@@ -98,33 +94,43 @@
 
   <!-- content -->
   <section class="content">
-    <h1 id="technology">Technology</h1>
-<h2 id="block-chain--crypto-currencies">Block Chain &amp; Crypto Currencies</h2>
+    <h1 id="primary">Primary</h1>
 <ul>
-  <li><a href="https://bitcoin.org/bitcoin.pdf" rel="nofollow" target="_blank">Bitcoin: White Paper</a></li>
-  <li><a href="https://github.com/ethereum/wiki/wiki/White-Paper" rel="nofollow" target="_blank">Ethereum: White Paper</a></li>
-  <li><a href="http://swarm-gateways.net/bzz:/theswarm.eth/ethersphere/orange-papers/1/sw%5E3.pdf" rel="nofollow" target="_blank">SWARM: Orange Paper 1</a></li>
-  <li><a href="https://github.com/ipfs/papers/raw/master/ipfs-cap2pfs/ipfs-p2p-file-system.pdf" rel="nofollow" target="_blank">IPFS: White Paper</a></li>
+  <li><a href="https://emanuelduss.ch/2018/09/wireguard-vpn-road-warrior-setup/" rel="nofollow" target="_blank">WireGuard Setup as a Gateway (Road Warrior)</a></li>
 </ul>
 
-<h2 id="networking">Networking</h2>
+<h1 id="supplemental">Supplemental</h1>
 <ul>
-  <li><a href="https://www.researchgate.net/publication/224170739_LEDBAT_The_new_bittorrent_congestion_control_protocol" rel="nofollow" target="_blank">LEDBAT: the new BitTorrent congestion control protocol</a></li>
-  <li><a href="https://www.internet2.edu/presentations/jt2009jul/20090722-litvanyi.pdf" rel="nofollow" target="_blank">Use and Limits of Traceroute</a></li>
-  <li><a href="https://www.researchgate.net/publication/265040969_Dissecting_Round_Trip_Time_on_the_Slow_Path_with_a_Single_Packet" rel="nofollow" target="_blank">Dissecting Round Trip Time on the Slow Path with a Single Packet</a></li>
+  <li><a href="https://www.wireguard.com/quickstart/" rel="nofollow" target="_blank">WireGuard Quick Start</a></li>
+  <li><a href="https://www.karlrupp.net/en/computer/nat_tutorial" rel="nofollow" target="_blank">NAT Tutorial with iptables</a></li>
 </ul>
 
-<h1 id="social">Social</h1>
-<h2 id="us-politics">US Politics</h2>
+<h1 id="notes">Notes</h1>
 <ul>
-  <li><a href="https://scholar.princeton.edu/sites/default/files/mgilens/files/gilens_and_page_2014_-testing_theories_of_american_politics.doc.pdf" rel="nofollow" target="_blank">Testing Theories of American Politics:Elites, Interest Groups, and Average Citizens</a></li>
-  <li><a href="https://www.rand.org/content/dam/rand/pubs/perspectives/PE100/PE198/RAND_PE198.pdf" rel="nofollow" target="_blank">The Russian “Firehose of Falsehood” Propaganda Model</a></li>
+  <li>There is little distinction between “server” (Endpoint) and “client” (Peer). A tunnel is established between a Peer’s interface and an Endpoint’s interface. Which traffic goes over the interface to the <code class="highlighter-rouge">Endpoint</code> is determined by the <code class="highlighter-rouge">AllowedIPs</code> of the Peer. Use <code class="highlighter-rouge">0.0.0.0/0</code> for all traffic.</li>
+  <li>WireGuard can be configured to give the interface a static IP as defined in the configuration file as well as which DNS server to use. I suspect dynamic allocation could be done if one were willing to configure a DHCP service on the server.</li>
+  <li>Use <code class="highlighter-rouge">wg-quick</code> to setup the wg service and interface
+    <ul>
+      <li>It will handle configuring the interface such as setting the ip, bringing it up, and configuring DNS</li>
+      <li>The syntax for the <code class="highlighter-rouge">wg-quick</code> config file appears to be a superset of the wg config file</li>
+      <li>There is a handy systemd script which will handle interface config and execute pre-up and post-down commands which are useful for running iptables commands</li>
+    </ul>
+  </li>
+  <li>
+<code class="highlighter-rouge">tcpdump</code> is quite useful for debugging. For example try <code class="highlighter-rouge">tcpdump -i wg0</code> on the server while pinging on the client to make sure traffic is being sent to the server over the tunnel</li>
 </ul>
 
-<h2 id="media">Media</h2>
-<ul>
-  <li><a href="http://www.cs.cornell.edu/home/kleinber/kdd09-quotes.pdf" rel="nofollow" target="_blank">Meme-tracking and the Dynamics of the News Cycle</a></li>
-</ul>
+<h2 id="sample-configuration">Sample Configuration</h2>
+<h3 id="client">Client</h3>
+<noscript><pre>400: Invalid request
+</pre></noscript>
+<script src="https://gist.github.com/55eb3ab1f732b3b81b2c634c4117630a.js"> </script>
+
+<h3 id="server">Server</h3>
+<noscript><pre>400: Invalid request
+</pre></noscript>
+<script src="https://gist.github.com/9016653ccf3b95a808bfe5a62882583a.js"> </script>
+
 
   </section>
 
@@ -133,6 +139,8 @@
   <section class="article-footer">
 
     <section class="tags">
+      
+      <a class="tag" href="/posts_filter/category-Resources/">Resources</a>
       
       
     </section>
@@ -158,16 +166,16 @@
           <div class="published">Sep 13, 2019</div>
         </a>
       
-        <a href="/2019/09/09/WireGuardResources" class="article-stub domain-mind">
-          <div class="title">Resources: WireGuard on Ubuntu Server</div>
-          <div class="subtitle">Setting up WireGuard (0.0.20190905) on Ubuntu Server (18.04.3 LTS)</div>
-          <div class="published">Sep 9, 2019</div>
-        </a>
-      
         <a href="/2017/11/03/Project-AdBlock-Mirage" class="article-stub domain-mind">
           <div class="title">Project: AdBlock Mirage</div>
           <div class="subtitle">Looking into a generic method for preventing the detection of element hiding, a method of ad blocking</div>
           <div class="published">Nov 3, 2017</div>
+        </a>
+      
+        <a href="/2017/10/22/Interesting-Readings" class="article-stub domain-mind">
+          <div class="title">Interesting Readings</div>
+          <div class="subtitle">A collection of thought engaging papers, articles, and the sort on various topics</div>
+          <div class="published">Oct 22, 2017</div>
         </a>
       
     </div>
@@ -179,8 +187,8 @@
       <script>
         var disqus_config = function ()
         {
-          this.disqus_identifier = '/2017/10/22/Interesting-Readings';
-          this.disqus_url = '/2017/10/22/Interesting-Readings';
+          this.disqus_identifier = '/2019/09/09/WireGuardResources';
+          this.disqus_url = '/2019/09/09/WireGuardResources';
         };
         (function()
         { // DON'T EDIT BELOW THIS LINE
