@@ -1,0 +1,237 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+  <title>Notes on CPU Cache Side Channel Attacks — Mike Wilson</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="/assets/main.css"/>
+  <link rel="alternate" type="application/rss+xml" title="Mike Wilson" href="/feed.xml"/>
+
+  <!-- Global Site Tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-107378017-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments)};
+    gtag('js', new Date());
+
+    gtag('config', 'UA-107378017-1');
+  </script>
+  <script async="" src="http://cdn.date-fns.org/v1.9.0/date_fns.min.js"></script>
+  <script src="https://use.fontawesome.com/46005f4479.js"></script>
+  <script async="" src="/assets/js/post.js "></script>
+  <script>
+    document.addEventListener('readystatechange', (event) =>
+    {
+      if( document.readyState === 'complete' )
+      {
+        let posts = document.querySelectorAll('article');
+        Array.prototype.map.call(posts, post => initPost(post));
+      }
+    });
+  </script>
+
+</head>
+
+
+  <body class="domain-mind">
+
+    <div class="page-header-wrapper">
+  <header id="header">
+    <div class="content">
+
+      <a class="site-title">
+        <span class="image"></span>
+        <span class="name">Mike Wilson</span>
+      </a>
+
+      <navigation class="primary-links">
+        
+        <a class="link mind" href="/posts_filter/domain-Mind/">Mind</a>
+        
+        <a class="link body" href="/posts_filter/domain-Body/">Body</a>
+        
+        <a class="link soul" href="/posts_filter/domain-Soul/">Soul</a>
+        
+      </navigation>
+
+    </div>
+
+    <div class="shadow-divider-bottom"></div>
+  </header>
+</div>
+
+
+    <div class="page-content-wrapper">
+      <main class="page-content" aria-label="Content">
+        
+
+
+
+<article class="primary" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <!-- header -->
+  <section class="article-header">
+    <h1 class="title">Notes on CPU Cache Side Channel Attacks</h1>
+    <p class="subtitle"></p>
+
+    <div class="info-container">
+      
+      <span class="info reading-time"><b> 3 minutes</b> read</span>
+      
+      
+      <span class="info updated" data-datetime="2020-03-13" title="Mar 13, 2020">
+        Mar 13, 2020
+      </span>
+      
+      <span class="info created" data-datetime="2020-03-07 00:00:00 +0800" title="Mar 7, 2020">
+        Mar 7, 2020
+      </span>
+    </div>
+
+  </section>
+
+
+  <!-- content -->
+  <section class="content">
+    <h1 id="overview">Overview</h1>
+<p>Cache timing attacks work by setting a cache set, which contains cache lines, to a known measurable state, such as not containing the target address, and measuring the access time of the <em>cache line</em> for the address.
+This exploits the fact that the cache access is significantly faster than non-cache access, this delay can be reliably measured, and that cache state is not isolated.
+If the access time is above a given, system dependent, threshold then it is inferred that the read came from memory and was not in the cache, and the program of interest had not accessed the address.</p>
+
+<p>The CPU cache works on the granularity of cache lines which are often composed of multiple addresses.
+This means that a target address can end up in the cache if a non-target address which happens to be in the same cache line is accessed.
+This can cause false positives.
+However this can also be used to target an address which is not shared with another process.</p>
+
+<p>Memory sharing is common for libraries (content aware sharing) and VMs (content based page sharing) and is needed for some attacks to measure if the target address is cached but not all attacks require memory sharing.</p>
+
+<p>Measuring access time of a target address can be done 1) directly by explicitly loading the target cache line or 2) indirectly such as by requesting another process to load the target cache line in a measurable way like via a function call.</p>
+
+<ul>
+  <li><a href="https://en.wikipedia.org/wiki/CPU_cache#Overview" rel="nofollow" target="_blank">Wiki on CPU Caches: Overview</a></li>
+  <li><a href="https://en.wikipedia.org/wiki/Cache_placement_policies#Set-associative_cache" rel="nofollow" target="_blank">Wiki on Cache Placement Policies: Set Associativity</a></li>
+  <li><a href="https://cseweb.ucsd.edu/classes/su07/cse141/cache-handout.pdf" rel="nofollow" target="_blank">Handout on the Basics of Caches [PDF]</a></li>
+  <li><a href="https://courses.cs.washington.edu/courses/cse378/09wi/lectures/lec15.pdf" rel="nofollow" target="_blank">Lecture Slides on CPU Caches [PDF]</a></li>
+</ul>
+
+<h1 id="specific-attacks">Specific Attacks</h1>
+<h2 id="spectre">Spectre</h2>
+<p>Takes advantage of speculative execution to control the cache state.</p>
+
+<ul>
+  <li><a href="/resources/2020-03-07-Notes-on-CPU-Side-Channel-Attacks/Spectre%20Attacks%20-%20Exploiting%20Speculative%20Execution%20%5Bannotated%5D.pdf">Paper [PDF, Annotated]</a></li>
+</ul>
+
+<h2 id="flushreload">Flush+Reload</h2>
+<p>Steps: 1) <em>flush</em>: clear the target address from cache using the <code class="highlighter-rouge">clflush</code> processor operation. 2) allow the program of interest to run. 3) <em>reload</em>: measuring the access time of the target address.
+If the access time is above a given, system dependent, threshold then it is inferred that the read came from memory and was not in the cache, and the program of interest had not accessed the address.</p>
+
+<p>One advantage of <code class="highlighter-rouge">clflush</code> is that it works across cores. The operation clears the cache line of the address from the last level cache, shared by all cores, and all higher (closer to core) caches allowing a process running on one core to infer memory access of a process on any core which shares the cache line of the address of interest.</p>
+
+<ul>
+  <li><a href="/resources/2020-03-07-Notes-on-CPU-Side-Channel-Attacks/FLUSH+RELOAD%20-%20A%20High%20Resolution,%20Low%20Noise,%20L3%20Cache%20Side-Channel%20Attack%20%5Bannotated%5D.pdf">Paper [PDF, Annotated]</a></li>
+  <li><a href="https://www.youtube.com/watch?v=UmLB1EWelCw&amp;list=PLD0iVKV30oCIl-9XrW-LEbaY3erjokmP6&amp;index=2&amp;t=0s" rel="nofollow" target="_blank">Attack Overview [Video]</a></li>
+</ul>
+
+<h2 id="primeprobe">Prime+Probe</h2>
+<p>Steps: 1) <em>prime</em>: clearing the target address from the cache by loading addresses known to not be the target address; this can be done by having an unrelated process access a large set of its own addresses. 2) allow the program of interest to run 3) <em>probe</em>: measure access time of the target address. The probe phase can also serve as the prime phase for the next iteration.</p>
+
+<p>This attack can work across cores by targeting the last level cache (LLC) if a subset of cache lines in the LLC can be targeted; without being able to target a subset of the LLC all addresses would need to be targeted, and due to the size of the LLC and slower access time targeting specific address access of a target process becomes too difficult because of the low resolution of the measurements (multiple cache loads would be measured in a single probe phase).</p>
+
+<ul>
+  <li><a href="/resources/2020-03-07-Notes-on-CPU-Side-Channel-Attacks/Last-Level%20Cache%20Side-Channel%20Attacks%20are%20Practical%20%5Bannotated%5D.pdf">Paper on Attacking the LLC [PDF, Annotated]</a></li>
+  <li><a href="https://www.youtube.com/watch?v=LawcqadRmLo&amp;list=PLD0iVKV30oCIl-9XrW-LEbaY3erjokmP6&amp;index=3&amp;t=0s" rel="nofollow" target="_blank">Attack Overview [Video]</a></li>
+</ul>
+
+<h1 id="some-thoughts">Some Thoughts</h1>
+<ul>
+  <li>If one can suspend the target process before and after the measurement phase for a known duration without introducing too much noise then attacks which have a long measure phase that results in low granularity could be made to have a higher granularity.
+Perhaps this can be done by evicting the instruction cache of the target process?</li>
+</ul>
+
+  </section>
+
+
+  <!-- footer -->
+  <section class="article-footer">
+
+    <section class="tags">
+      
+      <a class="tag" href="/posts_filter/category-Resources/">Resources</a>
+      
+      
+    </section>
+
+    <section class="action-bar">
+      <a href="#primary-article-comments">
+        <i class="fa fa-comments-o" aria-hidden="true"></i> Leave a Comment
+      </a>
+      <a href="/posts_filter/all/">
+        Read More Posts
+        <i class="fa fa-file-text" aria-hidden="true"></i>
+      </a>
+    </section>
+
+    <div class="shadow-divider-bottom"></div>
+
+    <!-- other articles -->
+    <div class="article-recomendations">
+      
+        <a href="/2019/10/10/Hong-Kong" class="article-stub domain-soul">
+          <div class="title">A Day Wandering in Hong Kong</div>
+          <div class="subtitle">Daytime photos from one day in Hong Kong</div>
+          <div class="published">Oct 10, 2019</div>
+        </a>
+      
+        <a href="/2019/09/13/Half-Dome" class="article-stub domain-soul">
+          <div class="title">A Hike to Half Dome</div>
+          <div class="subtitle">Photos from a trip to Sentinel Dome and Half Dome in Yosemite National Park during the Summer of 2019</div>
+          <div class="published">Sep 13, 2019</div>
+        </a>
+      
+        <a href="/2019/09/09/WireGuardResources" class="article-stub domain-mind">
+          <div class="title">Resources: WireGuard on Ubuntu Server</div>
+          <div class="subtitle">Setting up WireGuard (0.0.20190905) on Ubuntu Server (18.04.3 LTS)</div>
+          <div class="published">Sep 9, 2019</div>
+        </a>
+      
+    </div>
+    <div class="shadow-divider-bottom"></div>
+
+    <!-- comments -->
+    <div id="primary-article-comments" class="article-comments" name="article-comments">
+      <div id="disqus_thread"></div>
+      <script>
+        var disqus_config = function ()
+        {
+          this.disqus_identifier = '/2020/03/07/Notes-on-CPU-Side-Channel-Attacks';
+          this.disqus_url = '/2020/03/07/Notes-on-CPU-Side-Channel-Attacks';
+        };
+        (function()
+        { // DON'T EDIT BELOW THIS LINE
+          var d = document, s = d.createElement('script');
+          s.src = 'https://amikewilson-blog.disqus.com/embed.js';
+          s.setAttribute('data-timestamp', +new Date());
+          (d.head || d.body).appendChild(s);
+        })();
+      </script>
+      <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    </div>
+
+  </section>
+
+  <div class="shadow-divider-bottom"></div>
+</aticle>
+
+      </main>
+    </div>
+
+    <div class="page-footer"></div>
+  </body>
+
+</html>
