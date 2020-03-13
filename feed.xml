@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2020-03-13T15:55:41+08:00</updated><id>/</id><title type="html">Mike Wilson</title><entry><title type="html">Notes on CPU Cache Side Channel Attacks</title><link href="/2020/03/07/Notes-on-CPU-Side-Channel-Attacks" rel="alternate" type="text/html" title="Notes on CPU Cache Side Channel Attacks" /><published>2020-03-07T00:00:00+08:00</published><updated>2020-03-13T15:55:22+08:00</updated><id>/2020/03/07/Notes-on-CPU-Side-Channel-Attacks</id><content type="html" xml:base="/2020/03/07/Notes-on-CPU-Side-Channel-Attacks">&lt;h1 id=&quot;overview&quot;&gt;Overview&lt;/h1&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2020-03-13T16:57:31+08:00</updated><id>/</id><title type="html">Mike Wilson</title><entry><title type="html">Notes on CPU Cache Side Channel Attacks</title><link href="/2020/03/07/Notes-on-CPU-Side-Channel-Attacks" rel="alternate" type="text/html" title="Notes on CPU Cache Side Channel Attacks" /><published>2020-03-07T00:00:00+08:00</published><updated>2020-03-13T15:55:22+08:00</updated><id>/2020/03/07/Notes-on-CPU-Side-Channel-Attacks</id><content type="html" xml:base="/2020/03/07/Notes-on-CPU-Side-Channel-Attacks">&lt;h1 id=&quot;overview&quot;&gt;Overview&lt;/h1&gt;
 &lt;p&gt;Cache timing attacks work by setting a cache set, which contains cache lines, to a known measurable state, such as not containing the target address, and measuring the access time of the &lt;em&gt;cache line&lt;/em&gt; for the target address.
 This exploits the fact that the cache access is significantly faster than non-cache access, this delay can be reliably measured, and that cache state is not isolated.
 If the access time is above a given, system dependent, threshold then it is inferred that the read came from memory and was not in the cache, and the program of interest had not accessed the address.&lt;/p&gt;
@@ -24,7 +24,7 @@ However this can also be used to target an address which is not shared with anot
 &lt;p&gt;Takes advantage of speculative execution to control the cache state.&lt;/p&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;&lt;a href=&quot;/resources/2020-03-07-Notes-on-CPU-Side-Channel-Attacks/Spectre Attacks - Exploiting Speculative Execution [annotated].pdf&quot;&gt;Paper [PDF, Annotated]&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;/resources/2020-03-07-Notes-on-CPU-Side-Channel-Attacks/Spectre Attacks - Exploiting Speculative Execution [annotated].pdf&quot;&gt;Paper (2018) [PDF, Annotated]&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h2 id=&quot;flushreload&quot;&gt;Flush+Reload&lt;/h2&gt;
@@ -39,7 +39,7 @@ If the access time is above a given, system dependent, threshold then it is infe
 &lt;p&gt;One advantage of &lt;code class=&quot;highlighter-rouge&quot;&gt;clflush&lt;/code&gt; is that it works across cores. The operation clears the cache line of the address from the last level cache, shared by all cores, and all higher (closer to core) caches allowing a process running on one core to infer memory access of a process on any core which shares the cache line of the address of interest.&lt;/p&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;&lt;a href=&quot;/resources/2020-03-07-Notes-on-CPU-Side-Channel-Attacks/FLUSH+RELOAD - A High Resolution, Low Noise, L3 Cache Side-Channel Attack [annotated].pdf&quot;&gt;Paper [PDF, Annotated]&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;/resources/2020-03-07-Notes-on-CPU-Side-Channel-Attacks/FLUSH+RELOAD - A High Resolution, Low Noise, L3 Cache Side-Channel Attack [annotated].pdf&quot;&gt;Paper (2014) [PDF, Annotated]&lt;/a&gt;&lt;/li&gt;
   &lt;li&gt;&lt;a href=&quot;https://www.youtube.com/watch?v=UmLB1EWelCw&amp;amp;list=PLD0iVKV30oCIl-9XrW-LEbaY3erjokmP6&amp;amp;index=2&amp;amp;t=0s&quot;&gt;Attack Overview [Video]&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
 
@@ -52,10 +52,17 @@ If the access time is above a given, system dependent, threshold then it is infe
 The probe phase can also serve as the prime phase for the next iteration.&lt;/li&gt;
 &lt;/ol&gt;
 
-&lt;p&gt;This attack can work across cores by targeting the last level cache (LLC) if a subset of cache lines in the LLC can be targeted; without being able to target a subset of the LLC all addresses would need to be targeted, and due to the size of the LLC and slower access time targeting specific address access of a target process becomes too difficult because of the low resolution of the measurements (multiple cache loads would be measured in a single probe phase).&lt;/p&gt;
+&lt;p&gt;The original attack only targets the L1 cache.&lt;/p&gt;
+
+&lt;p&gt;However this attack can work across cores by targeting the last level cache (LLC) if a subset of cache lines in the LLC can be targeted.
+One approach is to load enough cache lines which map to a given cache set to force a complete eviction of the target addresses from that set.
+If loading any of those cache lines again results in a cache miss then another address, assumed to be the target address, must have been loaded.&lt;/p&gt;
+
+&lt;p&gt;Without being able to target a subset of the LLC all addresses would need to be targeted, and due to the size of the LLC and slower access time targeting specific address access of a target process becomes too difficult because of the low resolution of the measurements (multiple cache loads would be measured in a single probe phase).&lt;/p&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;&lt;a href=&quot;/resources/2020-03-07-Notes-on-CPU-Side-Channel-Attacks/Last-Level Cache Side-Channel Attacks are Practical [annotated].pdf&quot;&gt;Paper on Attacking the LLC [PDF, Annotated]&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;/resources/2020-03-07-Notes-on-CPU-Side-Channel-Attacks/Last-Level Cache Side-Channel Attacks are Practical [annotated].pdf&quot;&gt;Paper on Attacking the LLC (2015) [PDF, Annotated]&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;&quot;&gt;Paper on Attacking the L1 Cache(2005) [PDF, Annotated]&lt;/a&gt;&lt;/li&gt;
   &lt;li&gt;&lt;a href=&quot;https://www.youtube.com/watch?v=LawcqadRmLo&amp;amp;list=PLD0iVKV30oCIl-9XrW-LEbaY3erjokmP6&amp;amp;index=3&amp;amp;t=0s&quot;&gt;Attack Overview [Video]&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
 
@@ -146,7 +153,9 @@ Perhaps this can be done by evicting the instruction cache of the program of int
 
 &lt;h2 id=&quot;sample-configuration&quot;&gt;Sample Configuration&lt;/h2&gt;
 &lt;h3 id=&quot;client&quot;&gt;Client&lt;/h3&gt;
-&lt;p&gt;true&lt;script src=&quot;https://gist.github.com/55eb3ab1f732b3b81b2c634c4117630a.js&quot;&gt; &lt;/script&gt;&lt;/p&gt;
+&lt;noscript&gt;&lt;pre&gt;400: Invalid request
+&lt;/pre&gt;&lt;/noscript&gt;
+&lt;script src=&quot;https://gist.github.com/55eb3ab1f732b3b81b2c634c4117630a.js&quot;&gt; &lt;/script&gt;
 
 &lt;h3 id=&quot;server&quot;&gt;Server&lt;/h3&gt;
 &lt;noscript&gt;&lt;pre&gt;400: Invalid request

@@ -44,7 +44,7 @@
   <header id="header">
     <div class="content">
 
-      <a class="site-title">
+      <a class="site-title" href="/">
         <span class="image"></span>
         <span class="name">Mike Wilson</span>
       </a>
@@ -75,7 +75,7 @@
 
     <div class="info-container">
       
-      <span class="info reading-time"><b> 3 minutes</b> read</span>
+      <span class="info reading-time"><b> 4 minutes</b> read</span>
       
       
       <span class="info updated" data-datetime="2020-03-13" title="Mar 13, 2020">
@@ -118,7 +118,7 @@ However this can also be used to target an address which is not shared with anot
 <p>Takes advantage of speculative execution to control the cache state.</p>
 
 <ul>
-  <li><a href="/resources/2020-03-07-Notes-on-CPU-Side-Channel-Attacks/Spectre%20Attacks%20-%20Exploiting%20Speculative%20Execution%20%5Bannotated%5D.pdf">Paper [PDF, Annotated]</a></li>
+  <li><a href="/resources/2020-03-07-Notes-on-CPU-Side-Channel-Attacks/Spectre%20Attacks%20-%20Exploiting%20Speculative%20Execution%20%5Bannotated%5D.pdf">Paper (2018) [PDF, Annotated]</a></li>
 </ul>
 
 <h2 id="flushreload">Flush+Reload</h2>
@@ -135,7 +135,7 @@ If the access time is above a given, system dependent, threshold then it is infe
 <p>One advantage of <code class="highlighter-rouge">clflush</code> is that it works across cores. The operation clears the cache line of the address from the last level cache, shared by all cores, and all higher (closer to core) caches allowing a process running on one core to infer memory access of a process on any core which shares the cache line of the address of interest.</p>
 
 <ul>
-  <li><a href="/resources/2020-03-07-Notes-on-CPU-Side-Channel-Attacks/FLUSH+RELOAD%20-%20A%20High%20Resolution,%20Low%20Noise,%20L3%20Cache%20Side-Channel%20Attack%20%5Bannotated%5D.pdf">Paper [PDF, Annotated]</a></li>
+  <li><a href="/resources/2020-03-07-Notes-on-CPU-Side-Channel-Attacks/FLUSH+RELOAD%20-%20A%20High%20Resolution,%20Low%20Noise,%20L3%20Cache%20Side-Channel%20Attack%20%5Bannotated%5D.pdf">Paper (2014) [PDF, Annotated]</a></li>
   <li><a href="https://www.youtube.com/watch?v=UmLB1EWelCw&amp;list=PLD0iVKV30oCIl-9XrW-LEbaY3erjokmP6&amp;index=2&amp;t=0s" rel="nofollow" target="_blank">Attack Overview [Video]</a></li>
 </ul>
 
@@ -150,10 +150,17 @@ If the access time is above a given, system dependent, threshold then it is infe
 The probe phase can also serve as the prime phase for the next iteration.</li>
 </ol>
 
-<p>This attack can work across cores by targeting the last level cache (LLC) if a subset of cache lines in the LLC can be targeted; without being able to target a subset of the LLC all addresses would need to be targeted, and due to the size of the LLC and slower access time targeting specific address access of a target process becomes too difficult because of the low resolution of the measurements (multiple cache loads would be measured in a single probe phase).</p>
+<p>The original attack only targets the L1 cache.</p>
+
+<p>However this attack can work across cores by targeting the last level cache (LLC) if a subset of cache lines in the LLC can be targeted.
+One approach is to load enough cache lines which map to a given cache set to force a complete eviction of the target addresses from that set.
+If loading any of those cache lines again results in a cache miss then another address, assumed to be the target address, must have been loaded.</p>
+
+<p>Without being able to target a subset of the LLC all addresses would need to be targeted, and due to the size of the LLC and slower access time targeting specific address access of a target process becomes too difficult because of the low resolution of the measurements (multiple cache loads would be measured in a single probe phase).</p>
 
 <ul>
-  <li><a href="/resources/2020-03-07-Notes-on-CPU-Side-Channel-Attacks/Last-Level%20Cache%20Side-Channel%20Attacks%20are%20Practical%20%5Bannotated%5D.pdf">Paper on Attacking the LLC [PDF, Annotated]</a></li>
+  <li><a href="/resources/2020-03-07-Notes-on-CPU-Side-Channel-Attacks/Last-Level%20Cache%20Side-Channel%20Attacks%20are%20Practical%20%5Bannotated%5D.pdf">Paper on Attacking the LLC (2015) [PDF, Annotated]</a></li>
+  <li><a href="">Paper on Attacking the L1 Cache(2005) [PDF, Annotated]</a></li>
   <li><a href="https://www.youtube.com/watch?v=LawcqadRmLo&amp;list=PLD0iVKV30oCIl-9XrW-LEbaY3erjokmP6&amp;index=3&amp;t=0s" rel="nofollow" target="_blank">Attack Overview [Video]</a></li>
 </ul>
 
