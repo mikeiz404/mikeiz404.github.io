@@ -309,8 +309,12 @@ article .content {
     content: "❯❯❯❯❯ "; }
   article .content p {
     margin: .75em 0; }
-  article .content ul li {
+  article .content ul li, article .content ol li {
     margin-left: 1.75em; }
+  article .content ol li::marker {
+    font-weight: bold; }
+  article .content strong {
+    font-weight: bold; }
   article .content em {
     font-style: italic; }
 

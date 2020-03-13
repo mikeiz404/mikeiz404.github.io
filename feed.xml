@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2020-03-13T15:30:55+08:00</updated><id>/</id><title type="html">Mike Wilson</title><entry><title type="html">Notes on CPU Cache Side Channel Attacks</title><link href="/2020/03/07/Notes-on-CPU-Side-Channel-Attacks" rel="alternate" type="text/html" title="Notes on CPU Cache Side Channel Attacks" /><published>2020-03-07T00:00:00+08:00</published><updated>2020-03-13T15:30:42+08:00</updated><id>/2020/03/07/Notes-on-CPU-Side-Channel-Attacks</id><content type="html" xml:base="/2020/03/07/Notes-on-CPU-Side-Channel-Attacks">&lt;h1 id=&quot;overview&quot;&gt;Overview&lt;/h1&gt;
-&lt;p&gt;Cache timing attacks work by setting a cache set, which contains cache lines, to a known measurable state, such as not containing the target address, and measuring the access time of the &lt;em&gt;cache line&lt;/em&gt; for the address.
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.4.3">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2020-03-13T15:55:41+08:00</updated><id>/</id><title type="html">Mike Wilson</title><entry><title type="html">Notes on CPU Cache Side Channel Attacks</title><link href="/2020/03/07/Notes-on-CPU-Side-Channel-Attacks" rel="alternate" type="text/html" title="Notes on CPU Cache Side Channel Attacks" /><published>2020-03-07T00:00:00+08:00</published><updated>2020-03-13T15:55:22+08:00</updated><id>/2020/03/07/Notes-on-CPU-Side-Channel-Attacks</id><content type="html" xml:base="/2020/03/07/Notes-on-CPU-Side-Channel-Attacks">&lt;h1 id=&quot;overview&quot;&gt;Overview&lt;/h1&gt;
+&lt;p&gt;Cache timing attacks work by setting a cache set, which contains cache lines, to a known measurable state, such as not containing the target address, and measuring the access time of the &lt;em&gt;cache line&lt;/em&gt; for the target address.
 This exploits the fact that the cache access is significantly faster than non-cache access, this delay can be reliably measured, and that cache state is not isolated.
 If the access time is above a given, system dependent, threshold then it is inferred that the read came from memory and was not in the cache, and the program of interest had not accessed the address.&lt;/p&gt;
 
@@ -28,8 +28,13 @@ However this can also be used to target an address which is not shared with anot
 &lt;/ul&gt;
 
 &lt;h2 id=&quot;flushreload&quot;&gt;Flush+Reload&lt;/h2&gt;
-&lt;p&gt;Steps: 1) &lt;em&gt;flush&lt;/em&gt;: clear the target address from cache using the &lt;code class=&quot;highlighter-rouge&quot;&gt;clflush&lt;/code&gt; processor operation. 2) allow the program of interest to run. 3) &lt;em&gt;reload&lt;/em&gt;: measuring the access time of the target address.
-If the access time is above a given, system dependent, threshold then it is inferred that the read came from memory and was not in the cache, and the program of interest had not accessed the address.&lt;/p&gt;
+&lt;p&gt;Steps:&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;&lt;strong&gt;Flush&lt;/strong&gt;: clear the target address from cache using the &lt;code class=&quot;highlighter-rouge&quot;&gt;clflush&lt;/code&gt; processor operation.&lt;/li&gt;
+  &lt;li&gt;Allow the program of interest to run.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Reload&lt;/strong&gt;: measuring the access time of the target address.
+If the access time is above a given, system dependent, threshold then it is inferred that the read came from memory and was not in the cache, and the program of interest had not accessed the address.&lt;/li&gt;
+&lt;/ol&gt;
 
 &lt;p&gt;One advantage of &lt;code class=&quot;highlighter-rouge&quot;&gt;clflush&lt;/code&gt; is that it works across cores. The operation clears the cache line of the address from the last level cache, shared by all cores, and all higher (closer to core) caches allowing a process running on one core to infer memory access of a process on any core which shares the cache line of the address of interest.&lt;/p&gt;
 
@@ -39,7 +44,13 @@ If the access time is above a given, system dependent, threshold then it is infe
 &lt;/ul&gt;
 
 &lt;h2 id=&quot;primeprobe&quot;&gt;Prime+Probe&lt;/h2&gt;
-&lt;p&gt;Steps: 1) &lt;em&gt;prime&lt;/em&gt;: clearing the target address from the cache by loading addresses known to not be the target address; this can be done by having an unrelated process access a large set of its own addresses. 2) allow the program of interest to run 3) &lt;em&gt;probe&lt;/em&gt;: measure access time of the target address. The probe phase can also serve as the prime phase for the next iteration.&lt;/p&gt;
+&lt;p&gt;Steps:&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;&lt;strong&gt;Prime&lt;/strong&gt;: clearing the target address from the cache by loading addresses known to not be the target address; this can be done by having an unrelated process access a large set of its own addresses.&lt;/li&gt;
+  &lt;li&gt;Allow the program of interest to run.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Probe&lt;/strong&gt;: measure access time of the target address.
+The probe phase can also serve as the prime phase for the next iteration.&lt;/li&gt;
+&lt;/ol&gt;
 
 &lt;p&gt;This attack can work across cores by targeting the last level cache (LLC) if a subset of cache lines in the LLC can be targeted; without being able to target a subset of the LLC all addresses would need to be targeted, and due to the size of the LLC and slower access time targeting specific address access of a target process becomes too difficult because of the low resolution of the measurements (multiple cache loads would be measured in a single probe phase).&lt;/p&gt;
 
@@ -51,8 +62,8 @@ If the access time is above a given, system dependent, threshold then it is infe
 &lt;h1 id=&quot;some-thoughts&quot;&gt;Some Thoughts&lt;/h1&gt;
 &lt;ul&gt;
   &lt;li&gt;If one can suspend the target process before and after the measurement phase for a known duration without introducing too much noise then attacks which have a long measure phase that results in low granularity could be made to have a higher granularity.
-Perhaps this can be done by evicting the instruction cache of the target process?&lt;/li&gt;
-&lt;/ul&gt;</content><author><name></name></author><summary type="html">Overview Cache timing attacks work by setting a cache set, which contains cache lines, to a known measurable state, such as not containing the target address, and measuring the access time of the cache line for the address. This exploits the fact that the cache access is significantly faster than non-cache access, this delay can be reliably measured, and that cache state is not isolated. If the access time is above a given, system dependent, threshold then it is inferred that the read came from memory and was not in the cache, and the program of interest had not accessed the address.</summary></entry><entry><title type="html">A Day Wandering in Hong Kong</title><link href="/2019/10/10/Hong-Kong" rel="alternate" type="text/html" title="A Day Wandering in Hong Kong" /><published>2019-10-10T00:00:00+08:00</published><updated>2019-10-21T09:30:29+08:00</updated><id>/2019/10/10/Hong-Kong</id><content type="html" xml:base="/2019/10/10/Hong-Kong">&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/48890640797/in/album-72157711318072033/&quot; title=&quot;P1013217&quot;&gt;&lt;img src=&quot;https://live.staticflickr.com/65535/48890640797_ef2fedea4c_k.jpg&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+Perhaps this can be done by evicting the instruction cache of the program of interest?&lt;/li&gt;
+&lt;/ul&gt;</content><author><name></name></author><category term="Notes" /><summary type="html">Overview Cache timing attacks work by setting a cache set, which contains cache lines, to a known measurable state, such as not containing the target address, and measuring the access time of the cache line for the target address. This exploits the fact that the cache access is significantly faster than non-cache access, this delay can be reliably measured, and that cache state is not isolated. If the access time is above a given, system dependent, threshold then it is inferred that the read came from memory and was not in the cache, and the program of interest had not accessed the address.</summary></entry><entry><title type="html">A Day Wandering in Hong Kong</title><link href="/2019/10/10/Hong-Kong" rel="alternate" type="text/html" title="A Day Wandering in Hong Kong" /><published>2019-10-10T00:00:00+08:00</published><updated>2019-10-21T09:30:29+08:00</updated><id>/2019/10/10/Hong-Kong</id><content type="html" xml:base="/2019/10/10/Hong-Kong">&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/48890640797/in/album-72157711318072033/&quot; title=&quot;P1013217&quot;&gt;&lt;img src=&quot;https://live.staticflickr.com/65535/48890640797_ef2fedea4c_k.jpg&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/48890458961/in/album-72157711318072033/&quot; title=&quot;P1013220&quot;&gt;&lt;img src=&quot;https://live.staticflickr.com/65535/48890458961_1e02a3e3d2_k.jpg&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
@@ -108,7 +119,7 @@ Perhaps this can be done by evicting the instruction cache of the target process
 
 &lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/48765823437/in/album-72157710990308198/&quot; title=&quot;Version 2&quot;&gt;&lt;img src=&quot;https://live.staticflickr.com/65535/48765823437_9779149709_c.jpg&quot; alt=&quot;Version 2&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/48765812602/in/album-72157710990308198/&quot; title=&quot;Version 2&quot;&gt;&lt;img src=&quot;https://live.staticflickr.com/65535/48765812602_cd8cb30703_c.jpg&quot; alt=&quot;Version 2&quot; /&gt;&lt;/a&gt;&lt;/p&gt;</content><author><name></name></author><summary type="html"></summary></entry><entry><title type="html">Resources: WireGuard on Ubuntu Server</title><link href="/2019/09/09/WireGuardResources" rel="alternate" type="text/html" title="Resources: WireGuard on Ubuntu Server" /><published>2019-09-09T00:00:00+08:00</published><updated>2019-09-20T09:31:28+08:00</updated><id>/2019/09/09/WireGuardResources</id><content type="html" xml:base="/2019/09/09/WireGuardResources">&lt;h1 id=&quot;primary&quot;&gt;Primary&lt;/h1&gt;
+&lt;p&gt;&lt;a data-flickr-embed=&quot;true&quot; href=&quot;https://www.flickr.com/photos/154952248@N03/48765812602/in/album-72157710990308198/&quot; title=&quot;Version 2&quot;&gt;&lt;img src=&quot;https://live.staticflickr.com/65535/48765812602_cd8cb30703_c.jpg&quot; alt=&quot;Version 2&quot; /&gt;&lt;/a&gt;&lt;/p&gt;</content><author><name></name></author><summary type="html"></summary></entry><entry><title type="html">Notes on Setting up WireGuard for Ubuntu Server</title><link href="/2019/09/09/WireGuardResources" rel="alternate" type="text/html" title="Notes on Setting up WireGuard for Ubuntu Server" /><published>2019-09-09T00:00:00+08:00</published><updated>2020-03-13T15:55:22+08:00</updated><id>/2019/09/09/WireGuardResources</id><content type="html" xml:base="/2019/09/09/WireGuardResources">&lt;h1 id=&quot;primary&quot;&gt;Primary&lt;/h1&gt;
 &lt;ul&gt;
   &lt;li&gt;&lt;a href=&quot;https://emanuelduss.ch/2018/09/wireguard-vpn-road-warrior-setup/&quot;&gt;WireGuard Setup as a Gateway (Road Warrior)&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
@@ -135,14 +146,12 @@ Perhaps this can be done by evicting the instruction cache of the target process
 
 &lt;h2 id=&quot;sample-configuration&quot;&gt;Sample Configuration&lt;/h2&gt;
 &lt;h3 id=&quot;client&quot;&gt;Client&lt;/h3&gt;
-&lt;noscript&gt;&lt;pre&gt;400: Invalid request
-&lt;/pre&gt;&lt;/noscript&gt;
-&lt;script src=&quot;https://gist.github.com/55eb3ab1f732b3b81b2c634c4117630a.js&quot;&gt; &lt;/script&gt;
+&lt;p&gt;true&lt;script src=&quot;https://gist.github.com/55eb3ab1f732b3b81b2c634c4117630a.js&quot;&gt; &lt;/script&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;server&quot;&gt;Server&lt;/h3&gt;
 &lt;noscript&gt;&lt;pre&gt;400: Invalid request
 &lt;/pre&gt;&lt;/noscript&gt;
-&lt;script src=&quot;https://gist.github.com/9016653ccf3b95a808bfe5a62882583a.js&quot;&gt; &lt;/script&gt;</content><author><name></name></author><summary type="html">Primary WireGuard Setup as a Gateway (Road Warrior)</summary></entry><entry><title type="html">Project: AdBlock Mirage</title><link href="/2017/11/03/Project-AdBlock-Mirage" rel="alternate" type="text/html" title="Project: AdBlock Mirage" /><published>2017-11-03T00:00:00+08:00</published><updated>2017-11-09T08:16:11+08:00</updated><id>/2017/11/03/Project-AdBlock-Mirage</id><content type="html" xml:base="/2017/11/03/Project-AdBlock-Mirage">&lt;p&gt;&lt;img src=&quot;/resources/2017-11-03-Project-AdBlock-Mirage/mirage-demo.gif&quot; alt=&quot;Adblock Plus + &amp;quot;Mirage&amp;quot; Demo&quot; /&gt;&lt;/p&gt;
+&lt;script src=&quot;https://gist.github.com/9016653ccf3b95a808bfe5a62882583a.js&quot;&gt; &lt;/script&gt;</content><author><name></name></author><category term="Notes" /><summary type="html">Primary WireGuard Setup as a Gateway (Road Warrior)</summary></entry><entry><title type="html">Project: AdBlock Mirage</title><link href="/2017/11/03/Project-AdBlock-Mirage" rel="alternate" type="text/html" title="Project: AdBlock Mirage" /><published>2017-11-03T00:00:00+08:00</published><updated>2017-11-09T08:16:11+08:00</updated><id>/2017/11/03/Project-AdBlock-Mirage</id><content type="html" xml:base="/2017/11/03/Project-AdBlock-Mirage">&lt;p&gt;&lt;img src=&quot;/resources/2017-11-03-Project-AdBlock-Mirage/mirage-demo.gif&quot; alt=&quot;Adblock Plus + &amp;quot;Mirage&amp;quot; Demo&quot; /&gt;&lt;/p&gt;
 
 &lt;h1 id=&quot;motivation&quot;&gt;Motivation&lt;/h1&gt;
 &lt;p&gt;&lt;em&gt;You may want to skip this section if you are already familiar with ad blocking techniques.&lt;/em&gt;&lt;/p&gt;
@@ -327,7 +336,7 @@ Finally there are some limitations in this approach which effect performance and
 &lt;h2 id=&quot;media&quot;&gt;Media&lt;/h2&gt;
 &lt;ul&gt;
   &lt;li&gt;&lt;a href=&quot;http://www.cs.cornell.edu/home/kleinber/kdd09-quotes.pdf&quot;&gt;Meme-tracking and the Dynamics of the News Cycle&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;</content><author><name></name></author><summary type="html">Technology Block Chain &amp;amp; Crypto Currencies Bitcoin: White Paper Ethereum: White Paper SWARM: Orange Paper 1 IPFS: White Paper</summary></entry><entry><title type="html">Backpacking Notes</title><link href="/2017/06/07/Backpacking-Notes" rel="alternate" type="text/html" title="Backpacking Notes" /><published>2017-06-07T00:00:00+08:00</published><updated>2017-10-23T06:13:07+08:00</updated><id>/2017/06/07/Backpacking-Notes</id><content type="html" xml:base="/2017/06/07/Backpacking-Notes">&lt;h1 id=&quot;estimations--rules-of-thumb&quot;&gt;Estimations &amp;amp; Rules of Thumb&lt;/h1&gt;
+&lt;/ul&gt;</content><author><name></name></author><summary type="html">Technology Block Chain &amp;amp; Crypto Currencies Bitcoin: White Paper Ethereum: White Paper SWARM: Orange Paper 1 IPFS: White Paper</summary></entry><entry><title type="html">Backpacking Notes</title><link href="/2017/06/07/Backpacking-Notes" rel="alternate" type="text/html" title="Backpacking Notes" /><published>2017-06-07T00:00:00+08:00</published><updated>2020-03-13T15:55:22+08:00</updated><id>/2017/06/07/Backpacking-Notes</id><content type="html" xml:base="/2017/06/07/Backpacking-Notes">&lt;h1 id=&quot;estimations--rules-of-thumb&quot;&gt;Estimations &amp;amp; Rules of Thumb&lt;/h1&gt;
 &lt;ul&gt;
   &lt;li&gt;Travel speed (upper bound) &lt;a href=&quot;https://en.wikipedia.org/wiki/Naismith's_rule&quot;&gt;[Naismith’s rule]&lt;/a&gt;
     &lt;ul&gt;

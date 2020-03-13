@@ -50,13 +50,7 @@
       </a>
 
       <navigation class="primary-links">
-        
-        <a class="link mind" href="/posts_filter/domain-Mind/">Mind</a>
-        
-        <a class="link body" href="/posts_filter/domain-Body/">Body</a>
-        
-        <a class="link soul" href="/posts_filter/domain-Soul/">Soul</a>
-        
+        <a class="link" href="/posts_filter/all/">Posts</a>
       </navigation>
 
     </div>
@@ -99,7 +93,7 @@
   <!-- content -->
   <section class="content">
     <h1 id="overview">Overview</h1>
-<p>Cache timing attacks work by setting a cache set, which contains cache lines, to a known measurable state, such as not containing the target address, and measuring the access time of the <em>cache line</em> for the address.
+<p>Cache timing attacks work by setting a cache set, which contains cache lines, to a known measurable state, such as not containing the target address, and measuring the access time of the <em>cache line</em> for the target address.
 This exploits the fact that the cache access is significantly faster than non-cache access, this delay can be reliably measured, and that cache state is not isolated.
 If the access time is above a given, system dependent, threshold then it is inferred that the read came from memory and was not in the cache, and the program of interest had not accessed the address.</p>
 
@@ -128,8 +122,15 @@ However this can also be used to target an address which is not shared with anot
 </ul>
 
 <h2 id="flushreload">Flush+Reload</h2>
-<p>Steps: 1) <em>flush</em>: clear the target address from cache using the <code class="highlighter-rouge">clflush</code> processor operation. 2) allow the program of interest to run. 3) <em>reload</em>: measuring the access time of the target address.
-If the access time is above a given, system dependent, threshold then it is inferred that the read came from memory and was not in the cache, and the program of interest had not accessed the address.</p>
+<p>Steps:</p>
+<ol>
+  <li>
+<strong>Flush</strong>: clear the target address from cache using the <code class="highlighter-rouge">clflush</code> processor operation.</li>
+  <li>Allow the program of interest to run.</li>
+  <li>
+<strong>Reload</strong>: measuring the access time of the target address.
+If the access time is above a given, system dependent, threshold then it is inferred that the read came from memory and was not in the cache, and the program of interest had not accessed the address.</li>
+</ol>
 
 <p>One advantage of <code class="highlighter-rouge">clflush</code> is that it works across cores. The operation clears the cache line of the address from the last level cache, shared by all cores, and all higher (closer to core) caches allowing a process running on one core to infer memory access of a process on any core which shares the cache line of the address of interest.</p>
 
@@ -139,7 +140,15 @@ If the access time is above a given, system dependent, threshold then it is infe
 </ul>
 
 <h2 id="primeprobe">Prime+Probe</h2>
-<p>Steps: 1) <em>prime</em>: clearing the target address from the cache by loading addresses known to not be the target address; this can be done by having an unrelated process access a large set of its own addresses. 2) allow the program of interest to run 3) <em>probe</em>: measure access time of the target address. The probe phase can also serve as the prime phase for the next iteration.</p>
+<p>Steps:</p>
+<ol>
+  <li>
+<strong>Prime</strong>: clearing the target address from the cache by loading addresses known to not be the target address; this can be done by having an unrelated process access a large set of its own addresses.</li>
+  <li>Allow the program of interest to run.</li>
+  <li>
+<strong>Probe</strong>: measure access time of the target address.
+The probe phase can also serve as the prime phase for the next iteration.</li>
+</ol>
 
 <p>This attack can work across cores by targeting the last level cache (LLC) if a subset of cache lines in the LLC can be targeted; without being able to target a subset of the LLC all addresses would need to be targeted, and due to the size of the LLC and slower access time targeting specific address access of a target process becomes too difficult because of the low resolution of the measurements (multiple cache loads would be measured in a single probe phase).</p>
 
@@ -151,7 +160,7 @@ If the access time is above a given, system dependent, threshold then it is infe
 <h1 id="some-thoughts">Some Thoughts</h1>
 <ul>
   <li>If one can suspend the target process before and after the measurement phase for a known duration without introducing too much noise then attacks which have a long measure phase that results in low granularity could be made to have a higher granularity.
-Perhaps this can be done by evicting the instruction cache of the target process?</li>
+Perhaps this can be done by evicting the instruction cache of the program of interest?</li>
 </ul>
 
   </section>
@@ -162,8 +171,8 @@ Perhaps this can be done by evicting the instruction cache of the target process
 
     <section class="tags">
       
-      <a class="tag" href="/posts_filter/category-Resources/">Resources</a>
       
+      <a class="tag" href="/posts_filter/tag-Notes/">Notes</a>
       
     </section>
 
@@ -195,7 +204,7 @@ Perhaps this can be done by evicting the instruction cache of the target process
         </a>
       
         <a href="/2019/09/09/WireGuardResources" class="article-stub domain-mind">
-          <div class="title">Resources: WireGuard on Ubuntu Server</div>
+          <div class="title">Notes on Setting up WireGuard for Ubuntu Server</div>
           <div class="subtitle">Setting up WireGuard (0.0.20190905) on Ubuntu Server (18.04.3 LTS)</div>
           <div class="published">Sep 9, 2019</div>
         </a>
